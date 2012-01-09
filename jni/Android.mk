@@ -1,0 +1,7 @@
+LOCAL_PATH := $(call my-dir)
+include $(CLEAR_VARS)
+
+LOCAL_MODULE := decodeYUV420SP_jni
+LOCAL_SRC_FILES := decodeYUV420SP.c
+LOCAL_LDLIBS := -llog -DDEBUG
+include $(BUILD_SHARED_LIBRARY)
