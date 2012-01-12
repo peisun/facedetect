@@ -1,2 +1,0 @@
-set solib-search-path /Users/peisunstar/android/workspace/Facedetect/obj/local/armeabi
-directory /Users/peisunstar/android/android-ndk-r5b/platforms/android-3/arch-arm/usr/include /Users/peisunstar/android/workspace/Facedetect/jni /Users/peisunstar/android/android-ndk-r5b/sources/cxx-stl/system

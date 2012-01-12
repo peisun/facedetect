@@ -39,7 +39,7 @@ implements SurfaceHolder.Callback ,Camera.PreviewCallback {
 	private Size mSize = null;
 	private int mOrientation = 0;
 	private int defaultCameraId = 0;
-	private final String TAG = "Facedetect:CameraSurface";
+	private final String TAG = "Facedetect";
 	private List<Camera.Size> mPreviewSize = null;
 	private Camera.Parameters mCameraParameters =null;
 	private FaceDetector mFaceDetector = null;
@@ -48,6 +48,7 @@ implements SurfaceHolder.Callback ,Camera.PreviewCallback {
 	
 	private int mDispWidth = 0;
 	private int mDispHeight = 0;
+	private Bitmap mPreviewBitmap = null;
 	public CameraSurfaceView(Context context) {
 		super(context);
 		// TODO 自動生成されたコンストラクター・スタブ
@@ -239,25 +240,30 @@ implements SurfaceHolder.Callback ,Camera.PreviewCallback {
 		mFaceDetector = new FaceDetector(s.width,s.height,MAXFACES);
 		
 //		Log.d(TAG, "onPreviewFrame size " + s.width +" " + s.height); 
-		
+		long pre = System.currentTimeMillis();
 		final int[] rgb = decodeYUV420SP(data, s.width, s.height);
 		
-		
+		long pre2 = System.currentTimeMillis();
 		Bitmap bmp = Bitmap.createBitmap(rgb, s.width, s.height,Bitmap.Config.RGB_565);
 		
-		long pre = System.currentTimeMillis();
+		long pre3 = System.currentTimeMillis();
+//		final int lWidth = s.width;
+//		final int lHeight = s.height;
+//		mPreviewBitmap = Bitmap.createBitmap(lWidth, lHeight, Bitmap.Config.RGB_565);
+//		createBitmapYUVtoRGB565(data,mPreviewBitmap);
+		
 		
 		findFace = mFaceDetector.findFaces(bmp,faces);
 		
 		
-		long pre2 = System.currentTimeMillis();
-		Log.d(TAG,"findFaces " + (pre2 - pre) + "find " + findFace);
+		long pre4 = System.currentTimeMillis();
+		Log.d(TAG,"decodeYUV " + (pre2 - pre) + " createBitmap " + (pre3-pre2) + " find " + (pre4-pre3));
 		//Log.d(TAG,"find face " + findFace);
 
 		Canvas canvas = mHolder.lockCanvas(); 
 		canvas.drawColor(0x00000000);
 		canvas.drawBitmap(rgb, 0, s.width, 0, 0, s.width, s.height, false, null);
-		//canvas.drawBitmap(bmp, 0, 0, null);
+//		canvas.drawBitmap(mPreviewBitmap,0,0,null);
 		if(findFace > 0){
 			Paint paint = new Paint();
 		    paint.setColor(Color.argb(255, 255, 0, 0)); // 赤
@@ -341,9 +347,9 @@ implements SurfaceHolder.Callback ,Camera.PreviewCallback {
 	    } 
 	 */
 	public native int[] decodeYUV420SP(byte[] data,int width,int height);
-	public native int[] decodeYUV420TORGB565(byte[] data,int width,int height);
+	public native void createBitmapYUVtoRGB565(byte[] data,Bitmap bitmap);
 	static {
-		System.loadLibrary("decodeYUV420SP_jni");
+		System.loadLibrary("decodeYUV_jni");
 	}
 
 }
