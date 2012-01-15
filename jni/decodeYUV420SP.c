@@ -19,7 +19,22 @@
 //#endif
 #define SCALE_NORMAL 0
 #define SCALE_DOWN 1
+#define SCALE_DOWN_ROTATE 2
+static uint16_t make565(int red,int green,int blue)
+{
+    return (uint16_t)( ((red   << 8) & 0xf800) |
+                       ((green << 2) & 0x03e0) |
+                       ((blue  >> 3) & 0x001f) );
+}
+static uint16_t makeYUVtoRGB565(int red,int green,int blue)
+{
 /*
+	int red   = (*yuv & 0x00f80000) >> 19;
+	int green = (*yuv & 0x0000fc00) >>10;
+	int blue  = (*yuv & 0x000000f8) >> 3;
+*/
+	return (uint16_t) ((red >> 2) & 0x0f800 | (green >> 7) & 0x07e0  | (blue >> 13) & 0x001f);
+}/*
  * ARGB8888に変更する
  */
 void decodeYUVtoRGB8888(jbyte *yuv420sp,jint *rgb,jint width,jint height)
@@ -102,21 +117,97 @@ void scaledown_decodeYUVtoRGB8888(jbyte *yuv420sp,jint *rgb,jint width,jint heig
 
 	}
 }
-static uint16_t make565(int red,int green,int blue)
+void scaledown_rotateRGB8888(jbyte *yuv420sp,jint *rgb,jint width,jint height)
 {
-    return (uint16_t)( ((red   << 8) & 0xf800) |
-                       ((green << 2) & 0x03e0) |
-                       ((blue  >> 3) & 0x001f) );
+	int j,i,n;
+	int yp;
+	int r,g,b;
+	int y1192;
+	int y,u,v;
+	int uvp;
+	int frameSize = (width * height); 
+	int rgbp = 0;
+
+	int rgb_x = height/2;
+	int rgb_y = height/2-1;
+	for (j = 0, yp = 0 ; j < height; j+=2) {   
+		uvp = frameSize + (j >> 1) * width;
+		u = 0;
+		v = 0;   
+		for (i = 0 ,n = 0; i < width; i+=2, yp+=2,n++) {   
+			y = (0xff & ((int) *(yuv420sp+yp))) - 16;   
+			if (y < 0) y = 0;   
+			if ((i & 1) == 0) {   
+				v = (0xff & *(yuv420sp+uvp)) - 128;   
+				uvp++;
+				u = (0xff & *(yuv420sp+uvp)) - 128;
+				uvp++;
+			}   
+
+			y1192 = 1192 * y;   
+			r = (y1192 + 1634 * v);   
+			g = (y1192 - 833 * v - 400 * u);   
+			b = (y1192 + 2066 * u);   
+
+			if (r < 0) r = 0; else if (r > 262143) r = 262143;   
+			if (g < 0) g = 0; else if (g > 262143) g = 262143;   
+			if (b < 0) b = 0; else if (b > 262143) b = 262143;   
+
+			*(rgb+(rgb_x*n)+(rgb_y)) = 0xff000000 | ((r << 6) & 0xff0000) | ((g >> 2) &  0xff00) | ((b >> 10) & 0xff);   
+
+		}
+		rgb_y--;
+		yp += width;
+
+	}
 }
-static uint16_t makeYUVtoRGB565(int red,int green,int blue)
+void scaledown_rotateRGB565(AndroidBitmapInfo *info,void *pixels,jbyte *yuv420sp,int width,int height)
 {
-/*
-	int red   = (*yuv & 0x00f80000) >> 19;
-	int green = (*yuv & 0x0000fc00) >>10;
-	int blue  = (*yuv & 0x000000f8) >> 3;
-*/
-	return (uint16_t) ((red >> 2) & 0x0f800 | (green >> 7) & 0x07e0  | (blue >> 13) & 0x001f);
+	int j,i,n;
+	int yp;
+	int r,g,b;
+	int y1192;
+	int y,u,v;
+	int uvp;
+	uint16_t *rgb565 = (uint16_t*)pixels;
+//	int rgbp = 0;
+	int rgb_x = info->width;
+	int rgb_y = info->width-1;
+//	LOGD("scaledown_rotateRGB565 width=%d height=%d",info->width,info->height);
+	int frameSize = width * height; 
+	for ( j = 0, yp = 0; j < height; j+=2) {   
+		uvp = frameSize + (j >> 1) * width;
+		u = 0;
+		v = 0;   
+		for (i = 0 ,n=0; i < width; i+=2,yp+=2,n++) {   
+			y = (0xff & ((int) *(yuv420sp+yp))) - 16;   
+			if (y < 0) y = 0;   
+			if ((i & 1) == 0) {   
+				v = (0xff & *(yuv420sp+uvp)) - 128;   
+				uvp++;
+				u = (0xff & *(yuv420sp+uvp)) - 128;
+				uvp++;
+			}   
+
+			y1192 = 1192 * y;   
+			r = (y1192 + 1634 * v);   
+			g = (y1192 - 833 * v - 400 * u);   
+			b = (y1192 + 2066 * u);   
+
+			if (r < 0) r = 0; else if (r > 262143) r = 262143;   
+			if (g < 0) g = 0; else if (g > 262143) g = 262143;   
+			if (b < 0) b = 0; else if (b > 262143) b = 262143;   
+
+//			*(rgb565+yp) = (uint16_t)((r << 8) & 0xf800 | (g << 2) & 0x3e00 | (b >> 3) & 0x001f);
+			*(rgb565+(rgb_x*n)+(rgb_y)) = (uint16_t)makeYUVtoRGB565(r,g,b);
+//			LOGD("rgb_x = %d rgb_y = %d n = %d",rgb_x,rgb_y,n); 
+		}
+		rgb_y--;
+		yp += width;
+	}
 }
+
+
 /*
  * RGB565に変更する
  */
@@ -238,6 +329,16 @@ jintArray Java_jp_peisun_android_facedetect_DecodeYUV_decodeYUV420SP(JNIEnv *env
 		LOGD("GetIntArrayElements %x",rgb);
 		scaledown_decodeYUVtoRGB8888(jyuv,rgb,width,height);
 	}
+	else if(scale == SCALE_DOWN_ROTATE){
+		LOGD("rotate");
+		framesize = width/2 * height/2;
+		/* RGBのメモリを確保 */
+		pIntArray = (*env)->NewIntArray(env,framesize);
+		LOGD("NewIntArray %x",pIntArray);
+		rgb = (*env)->GetIntArrayElements(env,pIntArray,&isCopy);
+		LOGD("GetIntArrayElements %x",rgb);
+		scaledown_rotateRGB8888(jyuv,rgb,width,height);
+	}
 	else {
 		LOGE("unknown scale");
 	}
@@ -290,6 +391,9 @@ void Java_jp_peisun_android_facedetect_DecodeYUV_createBitmapYUVtoRGB565(JNIEnv 
 		else {
 			LOGE("Bitmap size error ");
 		}
+	}
+	else if(scale == SCALE_DOWN_ROTATE){
+			scaledown_rotateRGB565(&info,pixels,jyuv,width,height);
 	}
 	else {
 		LOGE("unknown scale");

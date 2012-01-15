@@ -31,8 +31,8 @@ import android.view.WindowManager;
 import 	android.graphics.PorterDuff.Mode;
 
 
-public class CameraSurfaceView extends SurfaceView 
-implements SurfaceHolder.Callback ,Camera.PreviewCallback {
+public class CameraSurfaceView extends SurfaceView {
+//implements SurfaceHolder.Callback ,Camera.PreviewCallback {
 	private Context mContext = null;
 	private SurfaceHolder mHolder = null;
 	private Camera mCamera = null;
@@ -51,267 +51,240 @@ implements SurfaceHolder.Callback ,Camera.PreviewCallback {
 	private Bitmap mPreviewBitmap = null;
 	public CameraSurfaceView(Context context) {
 		super(context);
-		// TODO ©“®¶¬‚³‚ê‚½ƒRƒ“ƒXƒgƒ‰ƒNƒ^[EƒXƒ^ƒu
+	
 		mContext = context;
 		mHolder = getHolder();
-		mHolder.addCallback(this);
-		//mHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
-		mHolder.setType(SurfaceHolder.SURFACE_TYPE_NORMAL);
-		
-		// Î‚¢’j‚Ìbitmap
-		c00 = BitmapFactory.decodeResource(this.getResources(), R.drawable.c00);
-		// •`ÊŒ³‚Ìİ’è
-        Rect c00_src = new Rect(); 
-        c00_src.left = 0 ;
-        c00_src.top = 0 ;
-        c00_src.right = c00.getWidth() ;
-        c00_src.bottom = c00.getHeight() ;
-        
-        /* ƒfƒBƒXƒvƒŒƒCƒTƒCƒY‚ğæ“¾‚µ‚Ä‚¨‚­ */
-        getDisplaySize();
-        
-		// —˜—p‰Â”\‚ÈƒJƒƒ‰‚ÌŒÂ”‚ğæ“¾
-		int numberOfCameras = Camera.getNumberOfCameras();
-		// CameraInfo‚©‚çƒoƒbƒNƒtƒƒ“ƒgƒJƒƒ‰‚Ìid‚ğæ“¾
-		CameraInfo cameraInfo = new CameraInfo();	
-		for (int i = 0; i < numberOfCameras; i++) {
-			Camera.getCameraInfo(i, cameraInfo);
-			if (cameraInfo.facing == CameraInfo.CAMERA_FACING_FRONT) {
-				defaultCameraId = i;
-			}
-		}
-
-
+//		mHolder.addCallback(this);
 
 	}
-	public void getDisplaySize(){
-		WindowManager wm = (WindowManager)mContext.getSystemService(Context.WINDOW_SERVICE);
-		Display disp = wm.getDefaultDisplay();
-		mDispWidth = disp.getWidth();
-		mDispHeight = disp.getHeight();
-		
-	}
-	public int getMinPreviewFps(){
-		List<int[]> fps = mCameraParameters.getSupportedPreviewFpsRange();
-		int[] range = fps.get(0);
-		return range[0];
-	}
-	public List<Camera.Size> getPreviewSizeList(){
-		Camera.Size setSize = null;
-		List<Camera.Size> mPreviewSize = (List<Camera.Size>) mCameraParameters.getSupportedPreviewSizes();
-
-
-		return mPreviewSize;
-	}
-	protected int getPortrait() {
-
-		boolean portrait = (this.getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT);
-		if (portrait) {
-			return 90;
-		}
-		else{
-			return 0;
-		}
-	}
-	private void cameraPreviewStart(){
-		// Set orientation
-		mOrientation = getPortrait();
-
-		try {
-			mCamera.setDisplayOrientation(mOrientation);
-			//mCamera.setPreviewDisplay();
-			mCamera.setOneShotPreviewCallback(this);
-			mCamera.startPreview();
-
-		} catch (Exception e){
-			Log.d(TAG, "Error starting camera preview: " + e.getMessage());
-		} 
-	}
-	@Override
-	public void surfaceChanged(SurfaceHolder holder, int format, int width,
-			int height) {
-		// TODO ©“®¶¬‚³‚ê‚½ƒƒ\ƒbƒhEƒXƒ^ƒu
-		if (mHolder.getSurface() == null){
-			// preview surface does not exist
-			return;
-		}
-		// stop preview before making changes
-		try {
-			mCamera.stopPreview();
-		} catch (Exception e){
-			// ignore: tried to stop a non-existent preview
-		}
-		//Camera.Size setSize = getOptimalPreviewSize(getPreviewSizeList(),width,height);
-		Camera.Size setSize = getResizePreviewSize(getPreviewSizeList(),width,height);
-		// start preview with new settings
-
-		if(setSize != null){
-			try {
-				mCameraParameters.setPreviewSize(setSize.width,setSize.height);
-				//mCameraParameters.setPreviewFormat(ImageFormat.RGB_565);
-				//int range = getMinPreviewFps();
-				//mCameraParameters.setPreviewFpsRange(range, range);
-				mCamera.setParameters(mCameraParameters);
-				Log.d(TAG,"setPreviewSize " +setSize.width+" "+ setSize.height );
-
-			}
-			catch(Exception e){
-				Log.d(TAG,"Error camera parameter " + e.getMessage());
-				e.printStackTrace();
-			}
-		}	
-
-		cameraPreviewStart();
-
-	}
-	private Size getResizePreviewSize(List<Size> sizes,int w, int h){
-		Size reSize = null;
-		for(Size size: sizes){
-			if(size.width < w && size.height < h){
-				reSize = size;
-				break;
-			}
-		}
-		return reSize;
-	}
-	private Size getOptimalPreviewSize(List<Size> sizes, int w, int h) {
-		final double ASPECT_TOLERANCE = 0.05;
-		double targetRatio = (double) w / h;
-		if (sizes == null) return null;
-
-		Size optimalSize = null;
-		double minDiff = Double.MAX_VALUE;
-
-		int targetHeight = h;
-
-		// Try to find an size match aspect ratio and size
-		for (Size size : sizes) {
-			double ratio = (double) size.width / size.height;
-			if (Math.abs(ratio - targetRatio) > ASPECT_TOLERANCE) continue;
-			if (Math.abs(size.height - targetHeight) < minDiff) {
-				optimalSize = size;
-				minDiff = Math.abs(size.height - targetHeight);
-			}
-		}
-
-		// Cannot find the one match the aspect ratio, ignore the requirement
-		if (optimalSize == null) {
-			minDiff = Double.MAX_VALUE;
-			for (Size size : sizes) {
-				if (Math.abs(size.height - targetHeight) < minDiff) {
-					optimalSize = size;
-					minDiff = Math.abs(size.height - targetHeight);
-				}
-			}
-		}
-		return optimalSize;
-	}
-	@Override
-	public void surfaceCreated(SurfaceHolder holder) {
-		// TODO ©“®¶¬‚³‚ê‚½ƒƒ\ƒbƒhEƒXƒ^ƒu
-		try {
-			mCamera = Camera.open(defaultCameraId);
-			mCameraParameters = mCamera.getParameters();
-			cameraPreviewStart();
-		}
-		catch(Exception e){
-			Log.d(TAG,"Camera not open");
-		}
-	}
-	@Override
-	public void surfaceDestroyed(SurfaceHolder holder) {
-		// TODO ©“®¶¬‚³‚ê‚½ƒƒ\ƒbƒhEƒXƒ^ƒu
-
-		mCamera.setOneShotPreviewCallback(null);
-		mCamera.stopPreview();
-		mCamera.release();
-	}
-	/* (”ñ Javadoc)
-	 * @see android.hardware.Camera.PreviewCallback#onPreviewFrame(byte[], android.hardware.Camera)
-	 */
-	@Override
-	public void onPreviewFrame(byte[] data, Camera camera) {
-		// TODO ©“®¶¬‚³‚ê‚½ƒƒ\ƒbƒhEƒXƒ^ƒu
-		try {
-		final int MAXFACES = 3;
-		int findFace = 0;
-		FaceDetector.Face[] faces = new FaceDetector.Face[MAXFACES];
-		Size s = camera.getParameters().getPreviewSize();
-		mFaceDetector = new FaceDetector(s.width,s.height,MAXFACES);
-		
-//		Log.d(TAG, "onPreviewFrame size " + s.width +" " + s.height); 
-		long pre = System.currentTimeMillis();
-		final int[] rgb = decodeYUV420SP(data, s.width, s.height);
-		
-		long pre2 = System.currentTimeMillis();
-		Bitmap bmp = Bitmap.createBitmap(rgb, s.width, s.height,Bitmap.Config.RGB_565);
-		
-		long pre3 = System.currentTimeMillis();
-//		final int lWidth = s.width;
-//		final int lHeight = s.height;
-//		mPreviewBitmap = Bitmap.createBitmap(lWidth, lHeight, Bitmap.Config.RGB_565);
-//		createBitmapYUVtoRGB565(data,mPreviewBitmap);
-		
-		
-		findFace = mFaceDetector.findFaces(bmp,faces);
-		
-		
-		long pre4 = System.currentTimeMillis();
-		Log.d(TAG,"decodeYUV " + (pre2 - pre) + " createBitmap " + (pre3-pre2) + " find " + (pre4-pre3));
-		//Log.d(TAG,"find face " + findFace);
-
-		Canvas canvas = mHolder.lockCanvas(); 
-		canvas.drawColor(0x00000000);
-		canvas.drawBitmap(rgb, 0, s.width, 0, 0, s.width, s.height, false, null);
-//		canvas.drawBitmap(mPreviewBitmap,0,0,null);
-		if(findFace > 0){
-			Paint paint = new Paint();
-		    paint.setColor(Color.argb(255, 255, 0, 0)); // Ô
-		    paint.setStyle(Style.STROKE); // “h‚è‚Â‚Ô‚µ‚È‚µ‚Ìü
-			for (int i = 0; i < findFace; i++) { // ”F¯‚µ‚½”‚¾‚¯ˆ—
-		        //Face face = faces[i];
-		        PointF midPoint = new PointF(0, 0);
-		        faces[i].getMidPoint(midPoint); // Šç”F¯Œ‹‰Ê‚ğæ“¾
-		        float eyesDistance = faces[i].eyesDistance();
-		        
-		        // •`Êæ‚Ìİ’è
-		        RectF rect = new RectF(); 
-		        rect.left = midPoint.x - (eyesDistance*2) ;
-		        rect.top = midPoint.y - (eyesDistance*2) ;
-		        rect.right = midPoint.x + (eyesDistance*2) ;
-		        rect.bottom = midPoint.y + (eyesDistance*2) ;
-
-		        
-		        canvas.drawBitmap(c00, c00_src, rect, paint); // Î‚¢’j‚É
-			 }
-			// ‚±‚±‚Å‚ÍAŒ‹‰Ê‚ğ‚í‚©‚è‚â‚·‚­‚·‚é‚½‚ß‚ÉAŒ³‚Ìƒrƒbƒgƒ}ƒbƒv‚ğ•¡»‚µA
-			// Ô‚¢lŠp‚ğ•`‰æ‚µ‚Ä‚¢‚Ü‚·
-
-//			Paint paint = new Paint();
-//			paint.setColor(Color.argb(255, 255, 0, 0)); // Ô
-//			paint.setStyle(Style.STROKE); // “h‚è‚Â‚Ô‚µ‚È‚µ‚Ìü
-//			for (int i = 0; i < findFace; i++) { // ”F¯‚µ‚½”‚¾‚¯ˆ—
-//				FaceDetector.Face face = faces[i];
-//				PointF midPoint = new PointF(0, 0);
-//				face.getMidPoint(midPoint); // Šç”F¯Œ‹‰Ê‚ğæ“¾
-//				float eyesDistance = face.eyesDistance(); // Šç”F¯Œ‹‰Ê‚ğæ“¾
-//				RectF rect = new RectF(); // ³•ûŒ`
-//				rect.left = midPoint.x - eyesDistance / 2;
-//				rect.top = midPoint.y - eyesDistance / 2;
-//				rect.right = midPoint.x + eyesDistance / 2;
-//				rect.bottom = midPoint.y + eyesDistance / 2;
-//				canvas.drawRect(rect, paint); // ³•ûŒ`‚ğ•`‰æ
+//	public void getDisplaySize(){
+//		WindowManager wm = (WindowManager)mContext.getSystemService(Context.WINDOW_SERVICE);
+//		Display disp = wm.getDefaultDisplay();
+//		mDispWidth = disp.getWidth();
+//		mDispHeight = disp.getHeight();
+//		
+//	}
+//	public int getMinPreviewFps(){
+//		List<int[]> fps = mCameraParameters.getSupportedPreviewFpsRange();
+//		int[] range = fps.get(0);
+//		return range[0];
+//	}
+//	public List<Camera.Size> getPreviewSizeList(){
+//		Camera.Size setSize = null;
+//		List<Camera.Size> mPreviewSize = (List<Camera.Size>) mCameraParameters.getSupportedPreviewSizes();
+//
+//
+//		return mPreviewSize;
+//	}
+//	protected int getPortrait() {
+//
+//		boolean portrait = (this.getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT);
+//		if (portrait) {
+//			return 90;
+//		}
+//		else{
+//			return 0;
+//		}
+//	}
+//	private void cameraPreviewStart(){
+//		// Set orientation
+//		mOrientation = getPortrait();
+//
+//		try {
+//			mCamera.setDisplayOrientation(mOrientation);
+//			//mCamera.setPreviewDisplay();
+//			mCamera.setOneShotPreviewCallback(this);
+//			mCamera.startPreview();
+//
+//		} catch (Exception e){
+//			Log.d(TAG, "Error starting camera preview: " + e.getMessage());
+//		} 
+//	}
+//	@Override
+//	public void surfaceChanged(SurfaceHolder holder, int format, int width,
+//			int height) {
+//		// TODO ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ê‚½ï¿½ï¿½ï¿½\ï¿½bï¿½hï¿½Eï¿½Xï¿½^ï¿½u
+//		if (mHolder.getSurface() == null){
+//			// preview surface does not exist
+//			return;
+//		}
+//		// stop preview before making changes
+//		try {
+//			mCamera.stopPreview();
+//		} catch (Exception e){
+//			// ignore: tried to stop a non-existent preview
+//		}
+//		//Camera.Size setSize = getOptimalPreviewSize(getPreviewSizeList(),width,height);
+//		Camera.Size setSize = getResizePreviewSize(getPreviewSizeList(),width,height);
+//		// start preview with new settings
+//
+//		if(setSize != null){
+//			try {
+//				mCameraParameters.setPreviewSize(setSize.width,setSize.height);
+//				//mCameraParameters.setPreviewFormat(ImageFormat.RGB_565);
+//				//int range = getMinPreviewFps();
+//				//mCameraParameters.setPreviewFpsRange(range, range);
+//				mCamera.setParameters(mCameraParameters);
+//				Log.d(TAG,"setPreviewSize " +setSize.width+" "+ setSize.height );
+//
 //			}
-
-		}
-		mHolder.unlockCanvasAndPost(canvas);
-		camera.setOneShotPreviewCallback(this);
-		}
-		catch(Exception e){
-			Log.d(TAG,"onPreviewFrame " + e.getMessage());
-			e.printStackTrace();
-		}
-	}
+//			catch(Exception e){
+//				Log.d(TAG,"Error camera parameter " + e.getMessage());
+//				e.printStackTrace();
+//			}
+//		}	
+//
+//		cameraPreviewStart();
+//
+//	}
+//	private Size getResizePreviewSize(List<Size> sizes,int w, int h){
+//		Size reSize = null;
+//		for(Size size: sizes){
+//			if(size.width < w && size.height < h){
+//				reSize = size;
+//				break;
+//			}
+//		}
+//		return reSize;
+//	}
+//	private Size getOptimalPreviewSize(List<Size> sizes, int w, int h) {
+//		final double ASPECT_TOLERANCE = 0.05;
+//		double targetRatio = (double) w / h;
+//		if (sizes == null) return null;
+//
+//		Size optimalSize = null;
+//		double minDiff = Double.MAX_VALUE;
+//
+//		int targetHeight = h;
+//
+//		// Try to find an size match aspect ratio and size
+//		for (Size size : sizes) {
+//			double ratio = (double) size.width / size.height;
+//			if (Math.abs(ratio - targetRatio) > ASPECT_TOLERANCE) continue;
+//			if (Math.abs(size.height - targetHeight) < minDiff) {
+//				optimalSize = size;
+//				minDiff = Math.abs(size.height - targetHeight);
+//			}
+//		}
+//
+//		// Cannot find the one match the aspect ratio, ignore the requirement
+//		if (optimalSize == null) {
+//			minDiff = Double.MAX_VALUE;
+//			for (Size size : sizes) {
+//				if (Math.abs(size.height - targetHeight) < minDiff) {
+//					optimalSize = size;
+//					minDiff = Math.abs(size.height - targetHeight);
+//				}
+//			}
+//		}
+//		return optimalSize;
+//	}
+//	@Override
+//	public void surfaceCreated(SurfaceHolder holder) {
+//		// TODO ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ê‚½ï¿½ï¿½ï¿½\ï¿½bï¿½hï¿½Eï¿½Xï¿½^ï¿½u
+//		try {
+//			mCamera = Camera.open(defaultCameraId);
+//			mCameraParameters = mCamera.getParameters();
+//			cameraPreviewStart();
+//		}
+//		catch(Exception e){
+//			Log.d(TAG,"Camera not open");
+//		}
+//	}
+//	@Override
+//	public void surfaceDestroyed(SurfaceHolder holder) {
+//		// TODO ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ê‚½ï¿½ï¿½ï¿½\ï¿½bï¿½hï¿½Eï¿½Xï¿½^ï¿½u
+//
+//		mCamera.setOneShotPreviewCallback(null);
+//		mCamera.stopPreview();
+//		mCamera.release();
+//	}
+//	/* (ï¿½ï¿½ Javadoc)
+//	 * @see android.hardware.Camera.PreviewCallback#onPreviewFrame(byte[], android.hardware.Camera)
+//	 */
+//	@Override
+//	public void onPreviewFrame(byte[] data, Camera camera) {
+//		// TODO ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ê‚½ï¿½ï¿½ï¿½\ï¿½bï¿½hï¿½Eï¿½Xï¿½^ï¿½u
+//		try {
+//		final int MAXFACES = 3;
+//		int findFace = 0;
+//		FaceDetector.Face[] faces = new FaceDetector.Face[MAXFACES];
+//		Size s = camera.getParameters().getPreviewSize();
+//		mFaceDetector = new FaceDetector(s.width,s.height,MAXFACES);
+//		
+////		Log.d(TAG, "onPreviewFrame size " + s.width +" " + s.height); 
+//		long pre = System.currentTimeMillis();
+//		final int[] rgb = decodeYUV420SP(data, s.width, s.height);
+//		
+//		long pre2 = System.currentTimeMillis();
+//		Bitmap bmp = Bitmap.createBitmap(rgb, s.width, s.height,Bitmap.Config.RGB_565);
+//		
+//		long pre3 = System.currentTimeMillis();
+////		final int lWidth = s.width;
+////		final int lHeight = s.height;
+////		mPreviewBitmap = Bitmap.createBitmap(lWidth, lHeight, Bitmap.Config.RGB_565);
+////		createBitmapYUVtoRGB565(data,mPreviewBitmap);
+//		
+//		
+//		findFace = mFaceDetector.findFaces(bmp,faces);
+//		
+//		
+//		long pre4 = System.currentTimeMillis();
+//		Log.d(TAG,"decodeYUV " + (pre2 - pre) + " createBitmap " + (pre3-pre2) + " find " + (pre4-pre3));
+//		//Log.d(TAG,"find face " + findFace);
+//
+//		Canvas canvas = mHolder.lockCanvas(); 
+//		canvas.drawColor(0x00000000);
+//		canvas.drawBitmap(rgb, 0, s.width, 0, 0, s.width, s.height, false, null);
+////		canvas.drawBitmap(mPreviewBitmap,0,0,null);
+//		if(findFace > 0){
+//			Paint paint = new Paint();
+//		    paint.setColor(Color.argb(255, 255, 0, 0)); // ï¿½ï¿½
+//		    paint.setStyle(Style.STROKE); // ï¿½hï¿½ï¿½Â‚Ô‚ï¿½ï¿½È‚ï¿½ï¿½Ìï¿½
+//			for (int i = 0; i < findFace; i++) { // ï¿½Fï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+//		        //Face face = faces[i];
+//		        PointF midPoint = new PointF(0, 0);
+//		        faces[i].getMidPoint(midPoint); // ï¿½ï¿½Fï¿½ï¿½ï¿½ï¿½ï¿½Ê‚ï¿½ï¿½æ“¾
+//		        float eyesDistance = faces[i].eyesDistance();
+//		        
+//		        // ï¿½`ï¿½Êï¿½Ìİ’ï¿½
+//		        RectF rect = new RectF(); 
+//		        rect.left = midPoint.x - (eyesDistance*2) ;
+//		        rect.top = midPoint.y - (eyesDistance*2) ;
+//		        rect.right = midPoint.x + (eyesDistance*2) ;
+//		        rect.bottom = midPoint.y + (eyesDistance*2) ;
+//
+//		        
+//		        canvas.drawBitmap(c00, c00_src, rect, paint); // ï¿½Î‚ï¿½ï¿½jï¿½ï¿½
+//			 }
+//			// ï¿½ï¿½ï¿½ï¿½ï¿½Å‚ÍAï¿½ï¿½ï¿½Ê‚ï¿½ï¿½í‚©ï¿½ï¿½â‚·ï¿½ï¿½ï¿½ï¿½ï¿½é‚½ï¿½ß‚ÉAï¿½ï¿½ï¿½Ìƒrï¿½bï¿½gï¿½}ï¿½bï¿½vï¿½ğ•¡ï¿½ï¿½ï¿½ï¿½A
+//			// ï¿½Ô‚ï¿½ï¿½lï¿½pï¿½ï¿½`ï¿½æ‚µï¿½Ä‚ï¿½ï¿½Ü‚ï¿½
+//
+////			Paint paint = new Paint();
+////			paint.setColor(Color.argb(255, 255, 0, 0)); // ï¿½ï¿½
+////			paint.setStyle(Style.STROKE); // ï¿½hï¿½ï¿½Â‚Ô‚ï¿½ï¿½È‚ï¿½ï¿½Ìï¿½
+////			for (int i = 0; i < findFace; i++) { // ï¿½Fï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+////				FaceDetector.Face face = faces[i];
+////				PointF midPoint = new PointF(0, 0);
+////				face.getMidPoint(midPoint); // ï¿½ï¿½Fï¿½ï¿½ï¿½ï¿½ï¿½Ê‚ï¿½ï¿½æ“¾
+////				float eyesDistance = face.eyesDistance(); // ï¿½ï¿½Fï¿½ï¿½ï¿½ï¿½ï¿½Ê‚ï¿½ï¿½æ“¾
+////				RectF rect = new RectF(); // ï¿½ï¿½ï¿½ï¿½`
+////				rect.left = midPoint.x - eyesDistance / 2;
+////				rect.top = midPoint.y - eyesDistance / 2;
+////				rect.right = midPoint.x + eyesDistance / 2;
+////				rect.bottom = midPoint.y + eyesDistance / 2;
+////				canvas.drawRect(rect, paint); // ï¿½ï¿½ï¿½ï¿½`ï¿½ï¿½`ï¿½ï¿½
+////			}
+//
+//		}
+//		mHolder.unlockCanvasAndPost(canvas);
+//		camera.setOneShotPreviewCallback(this);
+//		}
+//		catch(Exception e){
+//			Log.d(TAG,"onPreviewFrame " + e.getMessage());
+//			e.printStackTrace();
+//		}
+//	}
 	// YUV420 to BMP  
 	/*
 	public int[] decodeYUV420SP( byte[] yuv420sp, int width, int height) {   
