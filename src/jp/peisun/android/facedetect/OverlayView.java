@@ -203,6 +203,7 @@ public class OverlayView extends SurfaceView implements SurfaceHolder.Callback,R
 			new Thread(this).start();
 			return ;
 		}
+		
 		synchronized(bmp){
 		
 			long pre3 = System.currentTimeMillis();
@@ -234,17 +235,66 @@ public class OverlayView extends SurfaceView implements SurfaceHolder.Callback,R
 				long pre6 = System.currentTimeMillis();
 				Log.d(TAG,"findFaces time " + (pre6-pre5));
 				findFaceTime = (findFaceTime + (pre6-pre5))/2;
-				
-					Message msg = Message.obtain();
-					msg.obj = faces;
-					mHandler.sendMessage(msg);
-				
+
+				Message msg = Message.obtain();
+				msg.obj = faces;
+				mHandler.sendMessage(msg);
+
 				Log.d(TAG,"FindFaceDetector end");
 				//		invalidate();
 			}
 		}
 		return;
-		
+	}
+	public void startFindFace2(byte[] data,int width,int height,boolean orient){
+		FaceFind ff = new FaceFind();
+		ff.startFindFace( data,width,height,orient);
+	}
+	public class FaceFind implements Runnable {
+		private FaceDetector mFaceDetector = null;
+		private Bitmap pbmp = null;
+		public FaceFind() {
+
+		}
+		public void startFindFace(byte[] data,int width,int height,boolean orient){
+			int pWidth,pHeight;
+			
+			int[] rgb = null;
+			if(orient == true){
+				rgb = DecodeYUV.decodeYUV420SP(data, width, height,DecodeYUV.SCALE_DOWN_ROTATE);
+				pWidth = height/2;
+				pHeight = width/2;
+			}
+			else {
+				rgb = DecodeYUV.decodeYUV420SP(data, width, height,DecodeYUV.SCALE_DOWN);
+				pWidth = width/2;
+				pHeight = height/2;
+			}
+			
+			this.pbmp = Bitmap.createBitmap(rgb,  pWidth,pHeight,Bitmap.Config.RGB_565);
+			mFaceDetector = new FaceDetector(this.pbmp.getWidth(),this.pbmp.getHeight(),MAXFACES);
+			new Thread(this).start();
+		}
+		@Override
+		public void run() {
+			// TODO 自動生成されたメソッド・スタブ
+			Log.d(TAG,"FindFaceDetector start");
+			if(mFaceDetector == null) return;
+			FaceDetector.Face[] faces = new FaceDetector.Face[MAXFACES];
+			long pre5 = System.currentTimeMillis();
+			int findFace = mFaceDetector.findFaces(this.pbmp,faces);
+			this.pbmp.getDensity();
+			long pre6 = System.currentTimeMillis();
+			Log.d(TAG,"findFaces time " + (pre6-pre5));
+			findFaceTime = (findFaceTime + (pre6-pre5))/2;
+
+			Message msg = Message.obtain();
+			msg.obj = faces;
+			mHandler.sendMessage(msg);
+
+			Log.d(TAG,"FindFaceDetector end");
+			return;
+		}
 	}
 	
 	
