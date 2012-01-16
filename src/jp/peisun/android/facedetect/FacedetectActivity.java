@@ -90,14 +90,15 @@ public class FacedetectActivity extends Activity {
 			Size s = camera.getParameters().getPreviewSize();
 			boolean portrait = (getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT);
     		
-			mOverlayView.startFindFace(data,s.width,s.height,portrait);
+			//mOverlayView.startFindFace(data,s.width,s.height,portrait);
+			mOverlayView.startFindFace2(data,s.width,s.height,portrait);
 			long sleepTtime = mOverlayView.getFindFaceTime();
-			try{
-			Thread.sleep(sleepTtime);
-			}
-			catch(Exception e){
-				
-			}
+//			try{
+//			Thread.sleep(sleepTtime);
+//			}
+//			catch(Exception e){
+//				
+//			}
 			mCamera.setOneShotPreviewCallback(previewListener);
 		}
     	
@@ -148,7 +149,7 @@ public class FacedetectActivity extends Activity {
              
             
             //mOverlayView.setPreviewSize(optimalSize.width,optimalSize.height);
-            mOverlayView.surfaceChanged(width,height,portrait);
+           // mOverlayView.surfaceChanged(width,height,portrait);
             mCamera.setOneShotPreviewCallback(previewListener);
         	mCamera.startPreview();
         }
