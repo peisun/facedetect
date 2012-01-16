@@ -24,8 +24,9 @@ public class FacedetectActivity extends Activity {
 	private SurfaceHolder mCameraSurfaceHolder = null;
 	
 	/* カメラ関連 */
-	Camera mCamera = null;
-	int mDefaultCameraId = 0;
+	private Camera mCamera = null;
+	private int mDefaultCameraId = 0;
+	private volatile boolean mPortrait = false;
 	
 	/* OverlayView */
 	OverlayView mOverlayView = null;
@@ -88,10 +89,9 @@ public class FacedetectActivity extends Activity {
 		public void onPreviewFrame(byte[] data, Camera camera) {
 			// TODO 自動生成されたメソッド・スタブ
 			Size s = camera.getParameters().getPreviewSize();
-			boolean portrait = (getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT);
-    		
-			//mOverlayView.startFindFace(data,s.width,s.height,portrait);
-			mOverlayView.startFindFace2(data,s.width,s.height,portrait);
+			
+			mOverlayView.startFindFace(data,s.width,s.height,mPortrait);
+			//mOverlayView.startFindFace2(data,s.width,s.height,portrait);
 			long sleepTtime = mOverlayView.getFindFaceTime();
 //			try{
 //			Thread.sleep(sleepTtime);
@@ -139,8 +139,8 @@ public class FacedetectActivity extends Activity {
             
             mCamera.setParameters(parameters);
             
-            boolean portrait = (getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT);
-    		if (portrait) {
+            mPortrait = (getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT);
+    		if (mPortrait) {
     			mCamera.setDisplayOrientation(90);  /* 縦向き */
     		}
     		else{
@@ -149,7 +149,7 @@ public class FacedetectActivity extends Activity {
              
             
             //mOverlayView.setPreviewSize(optimalSize.width,optimalSize.height);
-           // mOverlayView.surfaceChanged(width,height,portrait);
+            mOverlayView.createFaceDetector(width,height,mPortrait);
             mCamera.setOneShotPreviewCallback(previewListener);
         	mCamera.startPreview();
         }
