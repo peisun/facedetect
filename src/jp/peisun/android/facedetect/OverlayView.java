@@ -39,7 +39,7 @@ public class OverlayView extends SurfaceView implements SurfaceHolder.Callback,R
 	RectF rect = new RectF();  /* マークの表示先座標 */
 	//private FaceDetector.Face[] faces = new FaceDetector.Face[MAXFACES];
 	private FaceDetector mFaceDetector = null;
-	private Bitmap bmp;
+	private Bitmap bmp = null;
 	private boolean mOrient = false;
 	
 	private volatile long findFaceTime = 500;
@@ -149,7 +149,7 @@ public class OverlayView extends SurfaceView implements SurfaceHolder.Callback,R
 	public long getFindFaceTime(){
 		return findFaceTime;
 	}
-	public void surfaceChanged(int width,int height,boolean orient){
+	public void createFaceDetector(int width,int height,boolean orient){
 		mPreviewWidth = width;
 		mPreviewHeight = height;
 		/* mFaceDetectorがnull、つまり最初の仕事 */
@@ -162,7 +162,7 @@ public class OverlayView extends SurfaceView implements SurfaceHolder.Callback,R
 			mFaceDetector = null;
 			mFaceDetector = new FaceDetector(width/2,height/2,MAXFACES);
 			if(bmp != null){
-			synchronized(bmp){
+			synchronized(lock){
 				bmp = null; /* Bitmapも作り直し */
 			}
 			}
@@ -184,7 +184,7 @@ public class OverlayView extends SurfaceView implements SurfaceHolder.Callback,R
 		int rgb[] = null;
 		long pre0,pre1 = 0;
 		if(data.length == 0) return ;
-
+		synchronized(lock){
 		if(bmp == null){
 			pre0 = System.currentTimeMillis();
 			if(orient == true){
@@ -204,7 +204,7 @@ public class OverlayView extends SurfaceView implements SurfaceHolder.Callback,R
 			return ;
 		}
 		
-		synchronized(bmp){
+		
 		
 			long pre3 = System.currentTimeMillis();
 			
@@ -227,7 +227,7 @@ public class OverlayView extends SurfaceView implements SurfaceHolder.Callback,R
 		// TODO 自動生成されたメソッド・スタブ
 		Log.d(TAG,"FindFaceDetector start");
 		if(bmp != null){
-			synchronized(bmp){
+			synchronized(lock){
 				if(mFaceDetector == null) return;
 				FaceDetector.Face[] faces = new FaceDetector.Face[MAXFACES];
 				long pre5 = System.currentTimeMillis();
