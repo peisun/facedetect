@@ -178,8 +178,8 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 			
 			dthread = new faceDetectThread(mFaceDetector[DetectorNo], faces[DetectorNo], bmp[DetectorNo]);
 			dthread.start();
+			detectThread[DetectorNo++] = dthread;
 			
-			DetectorNo++;
 			if (DetectorNo >= MAXDETECTOR) {
 				DetectorNo = 0;
 			}
