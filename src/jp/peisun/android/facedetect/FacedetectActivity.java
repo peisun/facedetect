@@ -8,7 +8,7 @@ import android.view.Window;
 import android.view.WindowManager;
 
 public class FacedetectActivity extends Activity {
-	private final String TAG = "Facedetect:";
+	private final String TAG = "MainActivity:";
 
 	/** Called when the activity is first created. */
     @Override
