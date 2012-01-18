@@ -95,10 +95,10 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 			mCamera.setDisplayOrientation(0); /* 横向き */
 		}
 		for(int i = 0; i < MAXDETECTOR; i++) {
-			mFaceDetector[i] = new FaceDetector(mPreviewSize.width/2, mPreviewSize.height/2, MAXFACES);
+			mFaceDetector[i] = new FaceDetector(mPreviewSize.width, mPreviewSize.height, MAXFACES);
 			detectThread[i] = null;
-			rgb[i] = null;
-			bmp[i] = null;
+			rgb[i] = new int[mPreviewSize.width * mPreviewSize.height];
+			bmp[i] = Bitmap.createBitmap(mPreviewSize.width, mPreviewSize.height, Bitmap.Config.RGB_565);
 			faces[i] = new FaceDetector.Face[MAXFACES];
 		}
         mCamera.setOneShotPreviewCallback(this);
@@ -170,10 +170,10 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 			}
 			if (isPortrait) {
 				rgb[DetectorNo] = DecodeYUV.decodeYUV420SP(data, mPreviewSize.width, mPreviewSize.height, DecodeYUV.SCALE_DOWN_ROTATE);
-				bmp[DetectorNo] = Bitmap.createBitmap(rgb[DetectorNo], mPreviewSize.height/2, mPreviewSize.width/2, Bitmap.Config.RGB_565);
+				DecodeYUV.createBitmapYUVtoRGB565(data, mPreviewSize.width, mPreviewSize.height, bmp[DetectorNo], DecodeYUV.SCALE_DOWN_ROTATE);
 			} else {
 				rgb[DetectorNo] = DecodeYUV.decodeYUV420SP(data, mPreviewSize.width, mPreviewSize.height, DecodeYUV.SCALE_DOWN);
-				bmp[DetectorNo] = Bitmap.createBitmap(rgb[DetectorNo], mPreviewSize.width/2, mPreviewSize.height/2, Bitmap.Config.RGB_565);
+				DecodeYUV.createBitmapYUVtoRGB565(data, mPreviewSize.width, mPreviewSize.height, bmp[DetectorNo], DecodeYUV.SCALE_DOWN);
 			}
 			
 			dthread = new faceDetectThread(mFaceDetector[DetectorNo], faces[DetectorNo], bmp[DetectorNo]);
