@@ -82,18 +82,18 @@ public class OverlayView extends SurfaceView implements SurfaceHolder.Callback {
 	
 	@Override
 	public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-		Log.d(TAG, "Changed");
-		Log.d(TAG, "width:" + width + "height:" + height);
+		Log.i(TAG, "Changed");
+		Log.d(TAG, "SurfaceSize width:" + width + "height:" + height);
 	}
 
 	@Override
 	public void surfaceCreated(SurfaceHolder holder) {
-		Log.d(TAG, "Created");
+		Log.i(TAG, "Created");
 		holder.setFormat(PixelFormat.TRANSLUCENT);
 	}
 	
 	@Override
 	public void surfaceDestroyed(SurfaceHolder holder) {
-		Log.d(TAG, "Destroyed");
+		Log.i(TAG, "Destroyed");
 	}	
 }

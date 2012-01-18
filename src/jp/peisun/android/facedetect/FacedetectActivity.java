@@ -25,19 +25,19 @@ public class FacedetectActivity extends Activity {
         addContentView(overlayview, new LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT));
         overlayview.setZOrderOnTop(true);
         cameraSurfaceView.setOverlayView(overlayview);
-        Log.d(TAG, "Activity Created");        
+        Log.i(TAG, "Activity Created");        
     }
 
 	@Override
 	protected void onPause() {
 		super.onPause();
-        Log.d(TAG, "Activity onPause");		
+        Log.i(TAG, "Activity onPause");		
 	}
 
 	@Override
 	protected void onResume() {
 		super.onResume();
-		Log.d(TAG, "Activity onResume");		
+		Log.i(TAG, "Activity onResume");		
 	}
 	
 }

@@ -52,7 +52,7 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 	// SurfaceViewが生成されたらカメラをオープンする
 	@Override
     public void surfaceCreated(SurfaceHolder holder) {
-		Log.d(TAG, "Created");
+		Log.i(TAG, "Created");
 		/* フロントカメラを探す */
 		mDefaultCameraId = getCameraFacing();
     	mCamera = Camera.open(mDefaultCameraId);
@@ -67,7 +67,7 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
     // SurfaceViewが破棄されるタイミングでカメラを開放する
 	@Override
     public void surfaceDestroyed(SurfaceHolder holder) {
-		Log.d(TAG, "Destroyed");
+		Log.i(TAG, "Destroyed");
 		mCamera.setOneShotPreviewCallback(null);
     	mCamera.stopPreview();
     	mCamera.release();
@@ -76,8 +76,8 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 	
 	@Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-		Log.d(TAG, "Changed");
-		Log.d(TAG, "width:" + width + " height:" + height);
+		Log.i(TAG, "Changed");
+		Log.d(TAG, "SurfaceSize width:" + width + " height:" + height);
 
 		Camera.Parameters parameters = mCamera.getParameters();
 
@@ -201,9 +201,9 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 
 		@Override
 		public void run() {
-			Log.d(TAG, "Start FaceDetect");
+			Log.i(TAG, "Start FaceDetect");
 			int faceCount = mFacedetector.findFaces(mBitmap, mFaces);
-			Log.d(TAG, "Finished FaceDetect");
+			Log.i(TAG, "Finished FaceDetect");
 			Log.d(TAG, "FaceCount:" + faceCount);
 			if (faceCount > 0) {
 				Message msg = Message.obtain();
