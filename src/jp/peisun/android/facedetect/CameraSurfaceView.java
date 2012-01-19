@@ -31,10 +31,12 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 	private int DetectorNo = 0;
 	private Thread[] detectThread = new Thread[MAXDETECTOR];
 	private FaceDetector[] mFaceDetector = new FaceDetector[MAXDETECTOR];
-	private int[][] rgb = new int[MAXDETECTOR][];
+//	private int[][] rgb = new int[MAXDETECTOR][];
 	private Bitmap[] bmp = new Bitmap[MAXDETECTOR];
 	private DetectResult [] detectResult = new DetectResult[MAXDETECTOR];
 
+	private volatile boolean mFacedetectEnable = false;
+	
 	private DecodeYUV decodeYUV = new DecodeYUV();
 	
 	private OverlayView mOverlayView;
@@ -68,11 +70,23 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
     // SurfaceViewが破棄されるタイミングでカメラを開放する
 	@Override
     public void surfaceDestroyed(SurfaceHolder holder) {
-		Log.i(TAG, "Destroyed");
+    	mFacedetectEnable = true;
 		mCamera.setOneShotPreviewCallback(null);
     	mCamera.stopPreview();
     	mCamera.release();
     	mCamera= null;
+    	for (int i = 0; i < MAXDETECTOR; i++) {
+    		Thread thread = detectThread[i];
+    		if (thread != null) {
+	    		try {
+					thread.join();
+				} catch (InterruptedException e) {
+					Log.e(TAG, "DetectThread[" + i + "] Join failed");
+					e.printStackTrace();
+				}    				
+    		}
+    	}
+		Log.i(TAG, "Destroyed");
     }
 	
 	@Override
@@ -99,13 +113,14 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 		
 		for(int i = 0; i < MAXDETECTOR; i++) {
 			mFaceDetector[i] = new FaceDetector(w, h, MAXFACES);
-			detectThread[i] = null;
-			rgb[i] = new int[w * h];
+//			detectThread[i] = null;
+//			rgb[i] = new int[w * h];
 			bmp[i] = Bitmap.createBitmap(w, h, Bitmap.Config.RGB_565);
 			detectResult[i] = new DetectResult(new FaceDetector.Face[MAXFACES], w, h);
 		}
         mCamera.setOneShotPreviewCallback(this);
     	mCamera.startPreview();
+    	mFacedetectEnable = true;
     	Log.d(TAG, "Preview Started Width:" + w + "/Height:" + h);
     }
 
@@ -159,6 +174,7 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 	
 	@Override
 	public void onPreviewFrame(byte[] yuvdata, Camera camera) {
+		if (mFacedetectEnable == false) return; //if Enable is false, then Do nothing;
 		if (mOverlayView != null) {
 			Thread dthread = detectThread[DetectorNo];
 			if (dthread != null) {
@@ -166,7 +182,7 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 					try {
 						dthread.join();
 					} catch (InterruptedException e) {
-						Log.d(TAG, "DetectThread[" + DetectorNo + "] Join failed");
+						Log.e(TAG, "DetectThread[" + DetectorNo + "] Join failed");
 						e.printStackTrace();
 					}
 				}
@@ -212,17 +228,19 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 
 		@Override
 		public void run() {
-			Log.i(TAG, "Start FaceDetect");
-			FaceDetector.Face [] faces = mResult.getFaces();
-			int faceCount = mFacedetector.findFaces(mBitmap, faces);
-			Log.i(TAG, "Finished FaceDetect");
-			Log.d(TAG, "FaceCount:" + faceCount);
-			if (faceCount > 0) {
-				for (int i = faceCount; i < MAXFACES; i++) {
-					faces[i] = null;
+			if (mFacedetectEnable) {
+				Log.i(TAG, "Start FaceDetect");
+				FaceDetector.Face [] faces = mResult.getFaces();
+				int faceCount = mFacedetector.findFaces(mBitmap, faces);
+				Log.i(TAG, "Finished FaceDetect");
+				Log.d(TAG, "FaceCount:" + faceCount);
+				if (faceCount > 0) {
+					for (int i = faceCount; i < MAXFACES; i++) {
+						faces[i] = null;
+					}
 				}
+				mOverlayView.faceDraw(faces, mResult.getWidth(), mResult.getHeight());
 			}
-			mOverlayView.faceDraw(faces, mResult.getWidth(), mResult.getHeight());
 			return;
 		}
 	}
