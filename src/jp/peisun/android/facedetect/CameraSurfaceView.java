@@ -9,14 +9,13 @@ import android.hardware.Camera;
 import android.hardware.Camera.CameraInfo;
 import android.hardware.Camera.Size;
 import android.media.FaceDetector;
-import android.os.Message;
 import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
 
 public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Callback ,Camera.PreviewCallback {
-	private final String TAG = "CameraSurface: ";
+	private final String TAG = "CameraSurface:";
 
 	private SurfaceHolder mHolder = null;
 	/* カメラ関連 */
@@ -25,17 +24,19 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 
 	private Size mPreviewSize = null;
 	private boolean isPortrait = false;
-	
+	/* FaceDetectorの定数 */
 	private final int MAXDETECTOR = 1;
 	private final int MAXFACES = 3;
-	private FaceDetector[] mFaceDetector = new FaceDetector[MAXDETECTOR];
-	
-	private Thread[] detectThread = new Thread[MAXDETECTOR];
+	/* 顔認識のリソース配列 */
 	private int DetectorNo = 0;
+	private Thread[] detectThread = new Thread[MAXDETECTOR];
+	private FaceDetector[] mFaceDetector = new FaceDetector[MAXDETECTOR];
 	private int[][] rgb = new int[MAXDETECTOR][];
 	private Bitmap[] bmp = new Bitmap[MAXDETECTOR];
-	private FaceDetector.Face[][] faces = new FaceDetector.Face[MAXDETECTOR][];
+	private DetectResult [] detectResult = new DetectResult[MAXDETECTOR];
 
+	private DecodeYUV decodeYUV = new DecodeYUV();
+	
 	private OverlayView mOverlayView;
 	public void setOverlayView(OverlayView view) {
 		mOverlayView = view;
@@ -77,14 +78,13 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 	@Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
 		Log.i(TAG, "Changed");
-		Log.d(TAG, "SurfaceSize width:" + width + " height:" + height);
+		Log.d(TAG, "SurfaceSize Width:" + width + "/Height:" + height);
 
 		Camera.Parameters parameters = mCamera.getParameters();
 
         List<Size> supportedSizes = parameters.getSupportedPreviewSizes();
         mPreviewSize = getOptimalPreviewSize(supportedSizes, width, height);
         parameters.setPreviewSize(mPreviewSize.width, mPreviewSize.height);
-        
         mCamera.setParameters(parameters);
         
         isPortrait = (getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT);
@@ -94,16 +94,19 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 		else{
 			mCamera.setDisplayOrientation(0); /* 横向き */
 		}
+		final int w = mPreviewSize.width / 2;
+		final int h = mPreviewSize.height / 2;
+		
 		for(int i = 0; i < MAXDETECTOR; i++) {
-			mFaceDetector[i] = new FaceDetector(mPreviewSize.width, mPreviewSize.height, MAXFACES);
+			mFaceDetector[i] = new FaceDetector(w, h, MAXFACES);
 			detectThread[i] = null;
-			rgb[i] = new int[mPreviewSize.width * mPreviewSize.height];
-			bmp[i] = Bitmap.createBitmap(mPreviewSize.width, mPreviewSize.height, Bitmap.Config.RGB_565);
-			faces[i] = new FaceDetector.Face[MAXFACES];
+			rgb[i] = new int[w * h];
+			bmp[i] = Bitmap.createBitmap(w, h, Bitmap.Config.RGB_565);
+			detectResult[i] = new DetectResult(new FaceDetector.Face[MAXFACES], w, h);
 		}
         mCamera.setOneShotPreviewCallback(this);
     	mCamera.startPreview();
-    	Log.d(TAG, "Preview Started Width:" + mPreviewSize.width + "Height:" + mPreviewSize.height);
+    	Log.d(TAG, "Preview Started Width:" + w + "/Height:" + h);
     }
 
 	private int getCameraFacing(){
@@ -155,7 +158,7 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
     }
 	
 	@Override
-	public void onPreviewFrame(byte[] data, Camera camera) {
+	public void onPreviewFrame(byte[] yuvdata, Camera camera) {
 		if (mOverlayView != null) {
 			Thread dthread = detectThread[DetectorNo];
 			if (dthread != null) {
@@ -168,17 +171,25 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 					}
 				}
 			}
-			if (isPortrait) {
-				rgb[DetectorNo] = DecodeYUV.decodeYUV420SP(data, mPreviewSize.width, mPreviewSize.height, DecodeYUV.SCALE_DOWN_ROTATE);
-				DecodeYUV.createBitmapYUVtoRGB565(data, mPreviewSize.width, mPreviewSize.height, bmp[DetectorNo], DecodeYUV.SCALE_DOWN_ROTATE);
-			} else {
-				rgb[DetectorNo] = DecodeYUV.decodeYUV420SP(data, mPreviewSize.width, mPreviewSize.height, DecodeYUV.SCALE_DOWN);
-				DecodeYUV.createBitmapYUVtoRGB565(data, mPreviewSize.width, mPreviewSize.height, bmp[DetectorNo], DecodeYUV.SCALE_DOWN);
-			}
 			
-			dthread = new faceDetectThread(mFaceDetector[DetectorNo], faces[DetectorNo], bmp[DetectorNo]);
-			dthread.start();
+			final int w = mPreviewSize.width;
+			final int h = mPreviewSize.height;
+			final FaceDetector facedetector = mFaceDetector[DetectorNo];
+			final Bitmap bitmap = bmp[DetectorNo];
+			final DetectResult detectresult = detectResult[DetectorNo];
+
+			Log.d(TAG, "bitmap Width:" + w + "/Height:" + h);
+			Log.d(TAG, "Start YUVtoRGB convert");
+			if (isPortrait) {
+				decodeYUV.createBitmap(yuvdata, h, w, bitmap, DecodeYUV.SCALE_DOWN_ROTATE);
+			} else {
+				decodeYUV.createBitmap(yuvdata, w, h, bitmap, DecodeYUV.SCALE_DOWN);
+			}
+			Log.d(TAG, "Finished YUVtoRGB convert");
+			Log.d(TAG, "Thread No" + DetectorNo);
+			dthread = new faceDetectThread(facedetector, bitmap, detectresult);
 			detectThread[DetectorNo++] = dthread;
+			dthread.start();
 			
 			if (DetectorNo >= MAXDETECTOR) {
 				DetectorNo = 0;
@@ -188,28 +199,30 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 	}
 
 	class faceDetectThread extends Thread implements Runnable {
-		private final String TAG = "Facedetect: ";
-		private Bitmap mBitmap;
+		private final String TAG = "Facedetect:";
 		private FaceDetector mFacedetector;
-		private FaceDetector.Face[] mFaces;
+		private Bitmap mBitmap;
+		private DetectResult mResult;
 		
-		public faceDetectThread(FaceDetector facedetector, FaceDetector.Face[] faces, Bitmap bitmap) {
+		public faceDetectThread(FaceDetector facedetector, Bitmap bitmap, DetectResult result) {
 			mFacedetector = facedetector;
-			mFaces = faces;
 			mBitmap = bitmap;
+			mResult = result;
 		}
 
 		@Override
 		public void run() {
 			Log.i(TAG, "Start FaceDetect");
-			int faceCount = mFacedetector.findFaces(mBitmap, mFaces);
+			FaceDetector.Face [] faces = mResult.getFaces();
+			int faceCount = mFacedetector.findFaces(mBitmap, faces);
 			Log.i(TAG, "Finished FaceDetect");
 			Log.d(TAG, "FaceCount:" + faceCount);
 			if (faceCount > 0) {
-				Message msg = Message.obtain();
-				msg.obj = mFaces;
-				mOverlayView.postHandler.sendMessage(msg);
+				for (int i = faceCount; i < MAXFACES; i++) {
+					faces[i] = null;
+				}
 			}
+			mOverlayView.faceDraw(faces, mResult.getWidth(), mResult.getHeight());
 			return;
 		}
 	}
