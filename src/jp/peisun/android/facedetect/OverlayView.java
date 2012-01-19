@@ -31,8 +31,6 @@ public class OverlayView extends SurfaceView implements SurfaceHolder.Callback,R
 	private Bitmap c00 = null;
 	private Rect c00_src = null;
 	private Paint mPaint = null;
-	private int mPreviewWidth = 0;
-	private int mPreviewHeight = 0;
 	final int MAXFACES = 3;
 	int findFace = 0;
 	
@@ -89,17 +87,6 @@ public class OverlayView extends SurfaceView implements SurfaceHolder.Callback,R
 		
 	}
 	
-
-	protected int getPortrait() {
-
-		boolean portrait = (getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT);
-		if (portrait) {
-			return 90;
-		}
-		else{
-			return 0;
-		}
-	}
 	public void doDraw(FaceDetector.Face[] faces) {
 		// TODO 自動生成されたメソッド・スタブ
 		
@@ -150,8 +137,7 @@ public class OverlayView extends SurfaceView implements SurfaceHolder.Callback,R
 		return findFaceTime;
 	}
 	public void createFaceDetector(int width,int height,boolean orient){
-		mPreviewWidth = width;
-		mPreviewHeight = height;
+		
 		/* mFaceDetectorがnull、つまり最初の仕事 */
 		if(mFaceDetector == null){
 			mFaceDetector = new FaceDetector(width/2,height/2,MAXFACES);
