@@ -24,7 +24,8 @@ public class OverlayView extends SurfaceView implements SurfaceHolder.Callback {
 	
 	private Bitmap face_bitmap = null;
 	private Rect face_src = null;
-	private Paint mPaint = null;
+	private Paint mPaintRed = null;
+	private Paint mPaintBlack = null;
 	
 	private int mWidth;
 	private int mHeight;
@@ -43,10 +44,26 @@ public class OverlayView extends SurfaceView implements SurfaceHolder.Callback {
         face_src.right = face_bitmap.getWidth() ;
         face_src.bottom = face_bitmap.getHeight() ;
         
-        mPaint = new Paint();
-        mPaint.setColor(Color.argb(255, 255, 0, 0)); 
-        mPaint.setStyle(Style.STROKE);
+        mPaintRed = new Paint();
+        mPaintRed.setColor(Color.RED);
+        mPaintRed.setStyle(Style.STROKE);
+        mPaintRed.setStrokeWidth(1.5f);
+
+        mPaintBlack = new Paint();
+        mPaintBlack.setColor(Color.BLACK);
+        mPaintBlack.setStyle(Style.FILL);
+        
         setFocusable(true);        
+	}
+
+	public static final int MODE_FACE = 0;
+	public static final int MODE_BAR = 1;
+	public static final int MODE_RECT = 2;
+	
+	private int mFaceMode = MODE_BAR;
+	
+	public void setMode(int mode) {
+		mFaceMode = mode;
 	}
 
 	public void faceDraw(FaceDetector.Face[] faces, int width, int height) {
@@ -61,19 +78,34 @@ public class OverlayView extends SurfaceView implements SurfaceHolder.Callback {
 			for (int i =0 ; i < faces.length && faces[i] != null ;i++) { 
 				PointF point = new PointF();
 				faces[i].getMidPoint(point);
-				float eyesDistance = faces[i].eyesDistance() * 1.5f;//顔全体の幅は目の間の距離の1.5倍程度
-				float centerX = width - point.x;
+				float eyesDistance = faces[i].eyesDistance() * 1.5f;//顔中心から輪郭までの幅は目の間の距離の1.5倍程度
+				float centerX = width - point.x;//何故か？左右が逆（認識結果のX軸原点と描画領域のX軸原点）
 				float centerY = point.y;
 				Log.d(TAG, "centerX:" + centerX + " centerY:" + centerY + " eyesDistance:" + eyesDistance);
 				Log.d(TAG, "widthX:" + widthX + " heightX" + heightX);
 
-				face_dst.left   = (centerX - eyesDistance) * widthX;
-				face_dst.top    = (centerY - eyesDistance) * heightX;
-				face_dst.right  = (centerX + eyesDistance) * widthX;
-				face_dst.bottom = (centerY + eyesDistance) * heightX;
+				if (mFaceMode == MODE_FACE) {
+					face_dst.left   = (centerX - eyesDistance) * widthX;
+					face_dst.top    = (centerY - eyesDistance) * heightX;
+					face_dst.right  = (centerX + eyesDistance) * widthX;
+					face_dst.bottom = (centerY + eyesDistance) * heightX;
 
-				canvas.drawBitmap(face_bitmap, face_src, face_dst, mPaint);
-				
+					canvas.drawBitmap(face_bitmap, face_src, face_dst, null);
+				} else if (mFaceMode == MODE_BAR) {
+					face_dst.left   = (centerX - eyesDistance) * widthX;
+					face_dst.top    = centerY * heightX - eyesDistance / 2.0f;
+					face_dst.right  = (centerX + eyesDistance) * widthX;
+					face_dst.bottom = centerY * heightX + eyesDistance / 2.0f;
+
+					canvas.drawRect(face_dst, mPaintBlack);				
+				} else if (mFaceMode == MODE_RECT) {
+					face_dst.left   = (centerX - eyesDistance) * widthX;
+					face_dst.top    = (centerY - eyesDistance) * heightX;
+					face_dst.right  = (centerX + eyesDistance) * widthX;
+					face_dst.bottom = (centerY + eyesDistance) * heightX;
+
+					canvas.drawRect(face_dst, mPaintRed);						
+				}
 			}
 			mHolder.unlockCanvasAndPost(canvas);
 		}		
