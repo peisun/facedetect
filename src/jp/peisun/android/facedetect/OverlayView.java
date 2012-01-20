@@ -60,7 +60,7 @@ public class OverlayView extends SurfaceView implements SurfaceHolder.Callback {
 	public static final int MODE_BAR = 1;
 	public static final int MODE_RECT = 2;
 	
-	private int mFaceMode = MODE_BAR;
+	private int mFaceMode = MODE_RECT;
 	
 	public void setMode(int mode) {
 		mFaceMode = mode;
