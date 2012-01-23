@@ -77,7 +77,7 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
     	mCamera= null;
     	for (int i = 0; i < MAXDETECTOR; i++) {
     		Thread thread = detectThread[i];
-    		if (thread != null) {
+    		if (thread.isAlive()) {
 	    		try {
 					thread.join();
 				} catch (InterruptedException e) {
