@@ -70,7 +70,7 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
     // SurfaceViewが破棄されるタイミングでカメラを開放する
 	@Override
     public void surfaceDestroyed(SurfaceHolder holder) {
-    	mFacedetectEnable = true;
+    	mFacedetectEnable = false;
 		mCamera.setOneShotPreviewCallback(null);
     	mCamera.stopPreview();
     	mCamera.release();
