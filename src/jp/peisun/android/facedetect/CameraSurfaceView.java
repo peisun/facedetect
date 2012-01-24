@@ -3,7 +3,6 @@ package jp.peisun.android.facedetect;
 import java.util.List;
 
 import android.content.Context;
-import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.hardware.Camera;
 import android.hardware.Camera.CameraInfo;
@@ -22,8 +21,8 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 	private Camera mCamera = null;
 	private int mDefaultCameraId = 0;
 
-	private Size mPreviewSize = null;
-	private boolean isPortrait = false;
+	private Size mCaptureSize = null;
+
 	/* FaceDetectorの定数 */
 	private final int MAXDETECTOR = 1;
 	private final int MAXFACES = 3;
@@ -31,7 +30,6 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 	private int DetectorNo = 0;
 	private Thread[] detectThread = new Thread[MAXDETECTOR];
 	private FaceDetector[] mFaceDetector = new FaceDetector[MAXDETECTOR];
-//	private int[][] rgb = new int[MAXDETECTOR][];
 	private Bitmap[] bmp = new Bitmap[MAXDETECTOR];
 	private DetectResult [] detectResult = new DetectResult[MAXDETECTOR];
 
@@ -97,24 +95,17 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 		Camera.Parameters parameters = mCamera.getParameters();
 
         List<Size> supportedSizes = parameters.getSupportedPreviewSizes();
-        mPreviewSize = getOptimalPreviewSize(supportedSizes, width, height);
-        parameters.setPreviewSize(mPreviewSize.width, mPreviewSize.height);
+        mCaptureSize = getOptimalPreviewSize(supportedSizes, width, height);
+        parameters.setPreviewSize(mCaptureSize.width, mCaptureSize.height);
         mCamera.setParameters(parameters);
         
-        isPortrait = (getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT);
-		if (isPortrait) {
-			mCamera.setDisplayOrientation(90);  /* 縦向き */
-		}
-		else{
-			mCamera.setDisplayOrientation(0); /* 横向き */
-		}
-		final int w = mPreviewSize.width / 2;
-		final int h = mPreviewSize.height / 2;
+        mCamera.setDisplayOrientation(0); /* 横向き */
+        
+		final int w = mCaptureSize.width / 2;
+		final int h = mCaptureSize.height / 2;
 		
 		for(int i = 0; i < MAXDETECTOR; i++) {
 			mFaceDetector[i] = new FaceDetector(w, h, MAXFACES);
-//			detectThread[i] = null;
-//			rgb[i] = new int[w * h];
 			bmp[i] = Bitmap.createBitmap(w, h, Bitmap.Config.RGB_565);
 			detectResult[i] = new DetectResult(new FaceDetector.Face[MAXFACES], w, h);
 		}
@@ -188,19 +179,15 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 				}
 			}
 			
-			final int w = mPreviewSize.width;
-			final int h = mPreviewSize.height;
+			final int w = mCaptureSize.width;
+			final int h = mCaptureSize.height;
 			final FaceDetector facedetector = mFaceDetector[DetectorNo];
 			final Bitmap bitmap = bmp[DetectorNo];
 			final DetectResult detectresult = detectResult[DetectorNo];
 
 			Log.d(TAG, "bitmap Width:" + w + "/Height:" + h);
 			Log.d(TAG, "Start YUVtoRGB convert");
-			if (isPortrait) {
-				decodeYUV.createBitmap(yuvdata, h, w, bitmap, DecodeYUV.SCALE_DOWN_ROTATE);
-			} else {
-				decodeYUV.createBitmap(yuvdata, w, h, bitmap, DecodeYUV.SCALE_DOWN);
-			}
+			decodeYUV.createBitmap(yuvdata, w, h, bitmap, DecodeYUV.SCALE_DOWN);
 			Log.d(TAG, "Finished YUVtoRGB convert");
 			Log.d(TAG, "Thread No" + DetectorNo);
 			dthread = new faceDetectThread(facedetector, bitmap, detectresult);
