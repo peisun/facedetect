@@ -7,6 +7,8 @@ import android.graphics.Bitmap;
 import android.hardware.Camera;
 import android.hardware.Camera.CameraInfo;
 import android.hardware.Camera.Size;
+import android.hardware.Sensor;
+import android.hardware.SensorManager;
 import android.media.FaceDetector;
 import android.util.Log;
 import android.view.SurfaceHolder;
@@ -23,6 +25,9 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 
 	private Size mCaptureSize = null;
 
+	private SensorManager mSensorManager;
+	private Sensor mGSensor;
+	
 	/* FaceDetectorの定数 */
 	private final int MAXDETECTOR = 1;
 	private final int MAXFACES = 3;
@@ -48,6 +53,7 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 		mHolder.addCallback(this);
         mHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
         mOverlayView = null;
+        mSensorManager = (SensorManager)context.getSystemService(SensorManager.)
 	}
 
 	// SurfaceViewが生成されたらカメラをオープンする
