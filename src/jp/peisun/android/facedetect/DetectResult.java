@@ -7,22 +7,32 @@ public class DetectResult {
 		private FaceDetector.Face [] faces;
 		private int detectWidth;
 		private int detectHeight;
+		private int rotate;
 		
-		public DetectResult(FaceDetector.Face[] f, int w, int h) {
-			faces = f;
-			detectWidth = w;
-			detectHeight = h;
+		public DetectResult(FaceDetector.Face[] faces, int width, int height) {
+			this.faces = faces;
+			this.detectWidth = width;
+			this.detectHeight = height;
+			this.rotate = 0;
 		}
 		
-		FaceDetector.Face[] getFaces() {
+		public FaceDetector.Face[] getFaces() {
 			return faces;
 		}
 		
-		int getWidth() {
+		public int getWidth() {
 			return detectWidth;
 		}
 		
-		int getHeight() {
+		public int getHeight() {
 			return detectHeight;
+		}
+		
+		public void setRotate(int rotate) {
+			this.rotate = rotate;
+		}
+		
+		public int getRotate() {
+			return this.rotate;
 		}
 }

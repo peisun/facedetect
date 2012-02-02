@@ -66,15 +66,51 @@ public class OverlayView extends SurfaceView implements SurfaceHolder.Callback {
 		mFaceMode = mode;
 	}
 
-	public void faceDraw(FaceDetector.Face[] faces, int width, int height) {
+	public void faceDraw(FaceDetector.Face[] faces, int width, int height, int rotate) {
 		Log.i(TAG, "Drawing Faces");
 		Log.d(TAG, "detectWidth:" + width + "/detectHeight:" + height);
 		Canvas canvas = mHolder.lockCanvas();
 		if(canvas != null){
 			RectF face_dst = new RectF();  /* 顔の表示先領域 */
-			canvas.drawColor(0, PorterDuff.Mode.CLEAR);
+
+			canvas.drawColor(0, PorterDuff.Mode.CLEAR); /* 透明色の塗り潰し */
+			canvas.rotate(rotate); /* 本体の向きに合わせてCanvasを回転 */
+			
+			/* 検出座標とCanvas座標の変換用倍率設定 */
 			float widthX = (float)mWidth / (float)width;
 			float heightX = (float)mHeight / (float)height;
+			/* 回転させたCanvasの原点位置を変更する（画面左上に原点を移動） */
+			/* Canvasの回転によって変換用倍率設定を変更 */
+			switch (rotate) {
+			case -90:
+				canvas.translate(-mHeight, 0); 
+				widthX = (float)mHeight / (float)width;
+				heightX = (float)mWidth / (float)height;
+				break;
+			case 90:
+				canvas.translate(0, -mWidth);
+				widthX = (float)mHeight / (float)width;
+				heightX = (float)mWidth / (float)height;
+				break;
+			case 180:
+			case -180:
+				canvas.translate(-mWidth, -mHeight);
+				break;
+			default:
+				break;
+			}
+/*			// 原点位置にマーカー（検出に使った画像サイズ）を表示
+			face_dst.left = 0;
+			face_dst.top = 0;
+			face_dst.right = width;
+			face_dst.bottom = height;
+			canvas.drawRect(face_dst, mPaintRed);
+			face_dst.left = 0;
+			face_dst.top = 0;
+			face_dst.right = width / 2;
+			face_dst.bottom = height / 2;
+			canvas.drawRect(face_dst, mPaintRed);
+*/		
 			for (int i =0 ; i < faces.length && faces[i] != null ;i++) { 
 				PointF point = new PointF();
 				faces[i].getMidPoint(point);

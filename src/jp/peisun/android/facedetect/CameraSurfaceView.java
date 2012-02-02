@@ -4,10 +4,13 @@ import java.util.List;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.Matrix;
 import android.hardware.Camera;
 import android.hardware.Camera.CameraInfo;
 import android.hardware.Camera.Size;
 import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.media.FaceDetector;
 import android.util.Log;
@@ -27,7 +30,8 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 
 	private SensorManager mSensorManager;
 	private Sensor mGSensor;
-	
+	private int mRotate;
+
 	/* FaceDetectorの定数 */
 	private final int MAXDETECTOR = 1;
 	private final int MAXFACES = 3;
@@ -35,6 +39,7 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 	private int DetectorNo = 0;
 	private Thread[] detectThread = new Thread[MAXDETECTOR];
 	private FaceDetector[] mFaceDetector = new FaceDetector[MAXDETECTOR];
+	private FaceDetector[] mFaceDetector_portrait = new FaceDetector[MAXDETECTOR];
 	private Bitmap[] bmp = new Bitmap[MAXDETECTOR];
 	private DetectResult [] detectResult = new DetectResult[MAXDETECTOR];
 
@@ -43,6 +48,7 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 	private DecodeYUV decodeYUV = new DecodeYUV();
 	
 	private OverlayView mOverlayView;
+	
 	public void setOverlayView(OverlayView view) {
 		mOverlayView = view;
 	}
@@ -53,8 +59,52 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 		mHolder.addCallback(this);
         mHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
         mOverlayView = null;
-        mSensorManager = (SensorManager)context.getSystemService(SensorManager.)
+        mSensorManager = (SensorManager)context.getSystemService(Context.SENSOR_SERVICE);
+        mGSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        mSensorManager.registerListener(mSensorListener, mGSensor, SensorManager.SENSOR_DELAY_NORMAL);
 	}
+		
+	private final SensorEventListener mSensorListener = new SensorEventListener() {
+		private float[] gSensor = new float[3];
+		private final int X = 0;
+		private final int Y = 1;
+		private final int Z = 2;
+		private double degree;
+		
+		@Override
+		public void onSensorChanged(SensorEvent event) {			
+			if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+				gSensor = event.values.clone();
+				float x = gSensor[X];
+				float y = gSensor[Y];
+				float z = gSensor[Z];
+				
+				if (-9.0f < z && z < 9.0f) {
+					degree = Math.toDegrees(Math.atan2(y, x));
+				} else {
+					degree = 0.0f;
+				}
+				
+				if (-45.0f < degree && degree < 45.0f) {
+					mRotate = 0;
+				} else if (45.0f < degree && degree < 135.0f) {
+					mRotate = -90;
+				} else if ( 135.0f < degree && degree < 180.0f) {
+					mRotate = -180;
+				} else if ( -135.0f < degree && degree < -45.0f) {
+					mRotate = 90;
+				} else if (-180.0f < degree && degree < -135.0f) {
+					mRotate = 180;
+				}
+			}
+		}
+		
+		@Override
+		public void onAccuracyChanged(Sensor sensor, int accuracy) {
+			// TODO 自動生成されたメソッド・スタブ
+			
+		}
+	};
 
 	// SurfaceViewが生成されたらカメラをオープンする
 	@Override
@@ -112,6 +162,7 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 		
 		for(int i = 0; i < MAXDETECTOR; i++) {
 			mFaceDetector[i] = new FaceDetector(w, h, MAXFACES);
+			mFaceDetector_portrait[i] = new FaceDetector(h, w, MAXFACES);
 			bmp[i] = Bitmap.createBitmap(w, h, Bitmap.Config.RGB_565);
 			detectResult[i] = new DetectResult(new FaceDetector.Face[MAXFACES], w, h);
 		}
@@ -187,15 +238,22 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 			
 			final int w = mCaptureSize.width;
 			final int h = mCaptureSize.height;
-			final FaceDetector facedetector = mFaceDetector[DetectorNo];
 			final Bitmap bitmap = bmp[DetectorNo];
-			final DetectResult detectresult = detectResult[DetectorNo];
 
 			Log.d(TAG, "bitmap Width:" + w + "/Height:" + h);
 			Log.d(TAG, "Start YUVtoRGB convert");
 			decodeYUV.createBitmap(yuvdata, w, h, bitmap, DecodeYUV.SCALE_DOWN);
 			Log.d(TAG, "Finished YUVtoRGB convert");
+			
 			Log.d(TAG, "Thread No" + DetectorNo);
+			FaceDetector facedetector;
+			if (Math.abs(mRotate) == 90)
+				facedetector = mFaceDetector_portrait[DetectorNo];
+			else
+				facedetector = mFaceDetector[DetectorNo];
+				
+			final DetectResult detectresult = detectResult[DetectorNo];
+			detectresult.setRotate(mRotate);
 			dthread = new faceDetectThread(facedetector, bitmap, detectresult);
 			detectThread[DetectorNo++] = dthread;
 			dthread.start();
@@ -223,8 +281,16 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 		public void run() {
 			if (mFacedetectEnable) {
 				Log.i(TAG, "Start FaceDetect");
+				Matrix matrix = new Matrix();
+				matrix.setRotate(mResult.getRotate());
+				int width = mResult.getWidth();
+				int height = mResult.getHeight();
+				Bitmap bitmap = Bitmap.createBitmap(mBitmap, 0, 0, width, height, matrix, true);
+				width = bitmap.getWidth();
+				height = bitmap.getHeight();
 				FaceDetector.Face [] faces = mResult.getFaces();
-				int faceCount = mFacedetector.findFaces(mBitmap, faces);
+				int faceCount = mFacedetector.findFaces(bitmap, faces);
+				bitmap.recycle();
 				Log.i(TAG, "Finished FaceDetect");
 				Log.d(TAG, "FaceCount:" + faceCount);
 				if (faceCount > 0) {
@@ -232,7 +298,7 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 						faces[i] = null;
 					}
 				}
-				mOverlayView.faceDraw(faces, mResult.getWidth(), mResult.getHeight());
+				mOverlayView.faceDraw(faces, width, height, mResult.getRotate());
 			}
 			return;
 		}
