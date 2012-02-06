@@ -20,8 +20,16 @@ public class DetectResult {
 			return faces;
 		}
 		
+		public void setWidth(int w) {
+			detectWidth = w;
+		}
+		
 		public int getWidth() {
 			return detectWidth;
+		}
+		
+		public void setHeight(int h) {
+			detectHeight = h;
 		}
 		
 		public int getHeight() {

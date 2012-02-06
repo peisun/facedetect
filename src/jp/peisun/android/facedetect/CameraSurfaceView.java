@@ -283,11 +283,9 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 				Log.i(TAG, "Start FaceDetect");
 				Matrix matrix = new Matrix();
 				matrix.setRotate(mResult.getRotate());
-				int width = mResult.getWidth();
-				int height = mResult.getHeight();
-				Bitmap bitmap = Bitmap.createBitmap(mBitmap, 0, 0, width, height, matrix, true);
-				width = bitmap.getWidth();
-				height = bitmap.getHeight();
+				Bitmap bitmap = Bitmap.createBitmap(mBitmap, 0, 0, mBitmap.getWidth(), mBitmap.getHeight(), matrix, true);
+				mResult.setWidth(bitmap.getWidth());
+				mResult.setHeight(bitmap.getHeight());
 				FaceDetector.Face [] faces = mResult.getFaces();
 				int faceCount = mFacedetector.findFaces(bitmap, faces);
 				bitmap.recycle();
@@ -298,7 +296,7 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 						faces[i] = null;
 					}
 				}
-				mOverlayView.faceDraw(faces, width, height, mResult.getRotate());
+				mOverlayView.setDetectResult(faces, mResult);
 			}
 			return;
 		}

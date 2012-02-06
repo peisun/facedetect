@@ -65,32 +65,45 @@ public class OverlayView extends SurfaceView implements SurfaceHolder.Callback {
 	public void setMode(int mode) {
 		mFaceMode = mode;
 	}
+	private int mResultWidth;
+	private int mResultHeight;
+	private int mResultRotate;
+	private FaceDetector.Face[] mResultFaces;
+	
+	public void setDetectResult(FaceDetector.Face[] faces, DetectResult result) {
+		mResultFaces = faces.clone();
+		mResultWidth = result.getWidth();
+		mResultHeight = result.getHeight();
+		mResultRotate = result.getRotate();
+		
+		faceDraw();
+	}
 
-	public void faceDraw(FaceDetector.Face[] faces, int width, int height, int rotate) {
+	private void faceDraw() {
 		Log.i(TAG, "Drawing Faces");
-		Log.d(TAG, "detectWidth:" + width + "/detectHeight:" + height);
+		Log.d(TAG, "detectWidth:" + mResultWidth + "/detectHeight:" + mResultHeight);
 		Canvas canvas = mHolder.lockCanvas();
 		if(canvas != null){
 			RectF face_dst = new RectF();  /* 顔の表示先領域 */
 
 			canvas.drawColor(0, PorterDuff.Mode.CLEAR); /* 透明色の塗り潰し */
-			canvas.rotate(rotate); /* 本体の向きに合わせてCanvasを回転 */
+			canvas.rotate(mResultRotate); /* 本体の向きに合わせてCanvasを回転 */
 			
 			/* 検出座標とCanvas座標の変換用倍率設定 */
-			float widthX = (float)mWidth / (float)width;
-			float heightX = (float)mHeight / (float)height;
+			float widthX = (float)mWidth / (float)mResultWidth;
+			float heightX = (float)mHeight / (float)mResultHeight;
 			/* 回転させたCanvasの原点位置を変更する（画面左上に原点を移動） */
 			/* Canvasの回転によって変換用倍率設定を変更 */
-			switch (rotate) {
+			switch (mResultRotate) {
 			case -90:
 				canvas.translate(-mHeight, 0); 
-				widthX = (float)mHeight / (float)width;
-				heightX = (float)mWidth / (float)height;
+				widthX = (float)mHeight / (float)mResultWidth;
+				heightX = (float)mWidth / (float)mResultHeight;
 				break;
 			case 90:
 				canvas.translate(0, -mWidth);
-				widthX = (float)mHeight / (float)width;
-				heightX = (float)mWidth / (float)height;
+				widthX = (float)mHeight / (float)mResultWidth;
+				heightX = (float)mWidth / (float)mResultHeight;
 				break;
 			case 180:
 			case -180:
@@ -99,23 +112,12 @@ public class OverlayView extends SurfaceView implements SurfaceHolder.Callback {
 			default:
 				break;
 			}
-/*			// 原点位置にマーカー（検出に使った画像サイズ）を表示
-			face_dst.left = 0;
-			face_dst.top = 0;
-			face_dst.right = width;
-			face_dst.bottom = height;
-			canvas.drawRect(face_dst, mPaintRed);
-			face_dst.left = 0;
-			face_dst.top = 0;
-			face_dst.right = width / 2;
-			face_dst.bottom = height / 2;
-			canvas.drawRect(face_dst, mPaintRed);
-*/		
-			for (int i =0 ; i < faces.length && faces[i] != null ;i++) { 
+
+			for (int i =0 ; i < mResultFaces.length && mResultFaces[i] != null ;i++) { 
 				PointF point = new PointF();
-				faces[i].getMidPoint(point);
-				float eyesDistance = faces[i].eyesDistance() * 1.5f;//顔中心から輪郭までの幅は目の間の距離の1.5倍程度
-				float centerX = width - point.x;//何故か？左右が逆（認識結果のX軸原点と描画領域のX軸原点）
+				mResultFaces[i].getMidPoint(point);
+				float eyesDistance = mResultFaces[i].eyesDistance() * 1.5f;//顔中心から輪郭までの幅は目の間の距離の1.5倍程度
+				float centerX = mResultWidth - point.x;//何故か？左右が逆（認識結果のX軸原点と描画領域のX軸原点）
 				float centerY = point.y;
 				Log.d(TAG, "centerX:" + centerX + " centerY:" + centerY + " eyesDistance:" + eyesDistance);
 				Log.d(TAG, "widthX:" + widthX + " heightX" + heightX);
