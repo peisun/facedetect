@@ -8,6 +8,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.PixelFormat;
 import android.graphics.PointF;
 import android.graphics.PorterDuff;
@@ -26,12 +27,15 @@ public class OverlayView extends SurfaceView implements SurfaceHolder.Callback {
 	private SurfaceHolder mHolder = null;
 	
 	private Bitmap face_bitmap = null;
+	private Bitmap circle_bitmap = null;
 	private Rect face_src = null;
+	private Rect circle_src = null;
 	private Paint mPaintRed = null;
 	private Paint mPaintBlack = null;
 	
-	private int mWidth;
-	private int mHeight;
+	private int mWidth = 0;
+	private int mHeight = 0;
+	private float mDegree = 0;
 	
 	private Timer mTimer = new Timer(true);
 
@@ -41,13 +45,20 @@ public class OverlayView extends SurfaceView implements SurfaceHolder.Callback {
 		mHolder.addCallback(this);
 		setDrawingCacheEnabled(true);            
 		// リソースから「笑い男」のビットマップを作る
-		face_bitmap = BitmapFactory.decodeResource(this.getResources(), R.drawable.c00);
+		face_bitmap = BitmapFactory.decodeResource(this.getResources(), R.drawable.face);
+		circle_bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.circle);
 		// 
         face_src = new Rect(); 
         face_src.left = 0 ;
         face_src.top = 0 ;
         face_src.right = face_bitmap.getWidth() ;
         face_src.bottom = face_bitmap.getHeight() ;
+
+        circle_src = new Rect();
+        circle_src.left = 0;
+        circle_src.top = 0;
+        circle_src.right = circle_bitmap.getWidth();
+        circle_src.bottom = circle_bitmap.getHeight();
         
         mPaintRed = new Paint();
         mPaintRed.setColor(Color.RED);
@@ -127,12 +138,27 @@ public class OverlayView extends SurfaceView implements SurfaceHolder.Callback {
 				Log.d(TAG, "widthX:" + widthX + " heightX" + heightX);
 
 				if (mFaceMode == MODE_FACE) {
+					Matrix matrix = new Matrix();
+					int width = circle_bitmap.getWidth();
+					int height =circle_bitmap.getHeight();
+					matrix.setRotate(mDegree, width / 2, height / 2);
+					Bitmap rotated_bitmap = Bitmap.createBitmap(circle_bitmap, 0, 0, width, height, matrix, false);
+					mDegree += 3.6f;
+					if (mDegree >= 360) mDegree = 0;
+					
+					circle_src.left = rotated_bitmap.getWidth() / 2 - width / 2;
+					circle_src.top = rotated_bitmap.getHeight() / 2 - height / 2;
+					circle_src.right = rotated_bitmap.getWidth() / 2 + width / 2;
+					circle_src.bottom = rotated_bitmap.getHeight() / 2 + height /2;
+					
 					face_dst.left   = (centerX - eyesDistance) * widthX;
 					face_dst.top    = (centerY - eyesDistance) * heightX;
 					face_dst.right  = (centerX + eyesDistance) * widthX;
 					face_dst.bottom = (centerY + eyesDistance) * heightX;
 
+					canvas.drawBitmap(rotated_bitmap, circle_src, face_dst, null);
 					canvas.drawBitmap(face_bitmap, face_src, face_dst, null);
+					rotated_bitmap.recycle();
 				} else if (mFaceMode == MODE_BAR) {
 					face_dst.left   = (centerX - eyesDistance) * widthX;
 					face_dst.top    = centerY * heightX - eyesDistance / 2.0f;
@@ -159,6 +185,9 @@ public class OverlayView extends SurfaceView implements SurfaceHolder.Callback {
 		Log.d(TAG, "SurfaceSize Width:" + width + "/Height:" + height);
 		mWidth = width;
 		mHeight = height;
+		if(mTimer == null) {
+			mTimer = new Timer(true);
+		}
 		TimerTask DrawPeriod = new TimerTask() {			
 			@Override
 			public void run() {
@@ -178,6 +207,7 @@ public class OverlayView extends SurfaceView implements SurfaceHolder.Callback {
 	public void surfaceDestroyed(SurfaceHolder holder) {
 		if (mTimer != null) {
 			mTimer.cancel();
+			mTimer = null;
 		}
 		Log.i(TAG, "Destroyed");
 	}	
