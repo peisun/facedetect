@@ -1,5 +1,8 @@
 package jp.peisun.android.facedetect;
 
+import java.util.Timer;
+import java.util.TimerTask;
+
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -29,6 +32,8 @@ public class OverlayView extends SurfaceView implements SurfaceHolder.Callback {
 	
 	private int mWidth;
 	private int mHeight;
+	
+	private Timer mTimer = new Timer(true);
 
 	public OverlayView(Context context) {
 		super(context);
@@ -65,6 +70,7 @@ public class OverlayView extends SurfaceView implements SurfaceHolder.Callback {
 	public void setMode(int mode) {
 		mFaceMode = mode;
 	}
+	
 	private int mResultWidth;
 	private int mResultHeight;
 	private int mResultRotate;
@@ -75,8 +81,6 @@ public class OverlayView extends SurfaceView implements SurfaceHolder.Callback {
 		mResultWidth = result.getWidth();
 		mResultHeight = result.getHeight();
 		mResultRotate = result.getRotate();
-		
-		faceDraw();
 	}
 
 	private void faceDraw() {
@@ -155,6 +159,13 @@ public class OverlayView extends SurfaceView implements SurfaceHolder.Callback {
 		Log.d(TAG, "SurfaceSize Width:" + width + "/Height:" + height);
 		mWidth = width;
 		mHeight = height;
+		TimerTask DrawPeriod = new TimerTask() {			
+			@Override
+			public void run() {
+				faceDraw();
+			}
+		};
+		mTimer.scheduleAtFixedRate(DrawPeriod, 1000, 15);
 	}
 
 	@Override
@@ -165,6 +176,9 @@ public class OverlayView extends SurfaceView implements SurfaceHolder.Callback {
 	
 	@Override
 	public void surfaceDestroyed(SurfaceHolder holder) {
+		if (mTimer != null) {
+			mTimer.cancel();
+		}
 		Log.i(TAG, "Destroyed");
 	}	
 }
