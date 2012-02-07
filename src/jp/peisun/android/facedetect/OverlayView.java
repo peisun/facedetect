@@ -35,7 +35,9 @@ public class OverlayView extends SurfaceView implements SurfaceHolder.Callback {
 	
 	private int mWidth = 0;
 	private int mHeight = 0;
-	private float mDegree = 0;
+	private int mRotateIndex = 0;
+	private final int DIVIDE = 36;
+	private Bitmap[] mRotatedBitmap = new Bitmap[DIVIDE];
 	
 	private Timer mTimer = new Timer(true);
 
@@ -95,6 +97,7 @@ public class OverlayView extends SurfaceView implements SurfaceHolder.Callback {
 	}
 
 	private void faceDraw() {
+		if (mResultFaces ==null) return;// 検出結果が無ければ何もしない
 		Log.i(TAG, "Drawing Faces");
 		Log.d(TAG, "detectWidth:" + mResultWidth + "/detectHeight:" + mResultHeight);
 		Canvas canvas = mHolder.lockCanvas();
@@ -138,13 +141,10 @@ public class OverlayView extends SurfaceView implements SurfaceHolder.Callback {
 				Log.d(TAG, "widthX:" + widthX + " heightX" + heightX);
 
 				if (mFaceMode == MODE_FACE) {
-					Matrix matrix = new Matrix();
 					int width = circle_bitmap.getWidth();
 					int height =circle_bitmap.getHeight();
-					matrix.setRotate(-mDegree, width / 2, height / 2);
-					Bitmap rotated_bitmap = Bitmap.createBitmap(circle_bitmap, 0, 0, width, height, matrix, false);
-					mDegree += 3.6f;
-					if (mDegree >= 360) mDegree = 0;
+					Bitmap rotated_bitmap = mRotatedBitmap[mRotateIndex++];
+					if (mRotateIndex >= DIVIDE)mRotateIndex = 0;
 					
 					circle_src.left = rotated_bitmap.getWidth() / 2 - width / 2;
 					circle_src.top = rotated_bitmap.getHeight() / 2 - height / 2;
@@ -158,7 +158,6 @@ public class OverlayView extends SurfaceView implements SurfaceHolder.Callback {
 
 					canvas.drawBitmap(rotated_bitmap, circle_src, face_dst, null);
 					canvas.drawBitmap(face_bitmap, face_src, face_dst, null);
-					rotated_bitmap.recycle();
 				} else if (mFaceMode == MODE_BAR) {
 					face_dst.left   = (centerX - eyesDistance) * widthX;
 					face_dst.top    = centerY * heightX - eyesDistance / 2.0f;
@@ -179,13 +178,27 @@ public class OverlayView extends SurfaceView implements SurfaceHolder.Callback {
 		}
 		Log.i(TAG, "Drawing Finished");
 	}
-	
+
+	private void makeRotatedBitmap( ) {
+		Matrix matrix = new Matrix();
+		int width = circle_bitmap.getWidth();
+		int height =circle_bitmap.getHeight();
+		int degree = 0;
+		for (int i = 0; i < DIVIDE; i++) {
+			matrix.reset();
+			matrix.setRotate(-degree, width / 2, height / 2);
+			mRotatedBitmap[i] = Bitmap.createBitmap(circle_bitmap, 0, 0, width, height, matrix, false);
+			degree += 360 / DIVIDE;
+		}
+	}
+
 	@Override
 	public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
 		Log.i(TAG, "Changed");
 		Log.d(TAG, "SurfaceSize Width:" + width + "/Height:" + height);
 		mWidth = width;
 		mHeight = height;
+		makeRotatedBitmap();
 		if(mTimer == null) {
 			mTimer = new Timer(true);
 		}
@@ -195,7 +208,7 @@ public class OverlayView extends SurfaceView implements SurfaceHolder.Callback {
 				faceDraw();
 			}
 		};
-		mTimer.scheduleAtFixedRate(DrawPeriod, 1000, 15);
+		mTimer.scheduleAtFixedRate(DrawPeriod, 1000, 200);
 	}
 
 	@Override
