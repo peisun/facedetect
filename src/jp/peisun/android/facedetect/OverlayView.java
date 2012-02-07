@@ -131,7 +131,7 @@ public class OverlayView extends SurfaceView implements SurfaceHolder.Callback {
 			for (int i =0 ; i < mResultFaces.length && mResultFaces[i] != null ;i++) { 
 				PointF point = new PointF();
 				mResultFaces[i].getMidPoint(point);
-				float eyesDistance = mResultFaces[i].eyesDistance() * 1.5f;//顔中心から輪郭までの幅は目の間の距離の1.5倍程度
+				float eyesDistance = mResultFaces[i].eyesDistance() * 1.8f;//顔中心から輪郭までの幅は目の間の距離の1.8倍程度
 				float centerX = mResultWidth - point.x;//何故か？左右が逆（認識結果のX軸原点と描画領域のX軸原点）
 				float centerY = point.y;
 				Log.d(TAG, "centerX:" + centerX + " centerY:" + centerY + " eyesDistance:" + eyesDistance);
@@ -141,7 +141,7 @@ public class OverlayView extends SurfaceView implements SurfaceHolder.Callback {
 					Matrix matrix = new Matrix();
 					int width = circle_bitmap.getWidth();
 					int height =circle_bitmap.getHeight();
-					matrix.setRotate(mDegree, width / 2, height / 2);
+					matrix.setRotate(-mDegree, width / 2, height / 2);
 					Bitmap rotated_bitmap = Bitmap.createBitmap(circle_bitmap, 0, 0, width, height, matrix, false);
 					mDegree += 3.6f;
 					if (mDegree >= 360) mDegree = 0;
