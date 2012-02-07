@@ -176,7 +176,8 @@ public class OverlayView extends SurfaceView implements SurfaceHolder.Callback {
 				}
 			}
 			mHolder.unlockCanvasAndPost(canvas);
-		}		
+		}
+		Log.i(TAG, "Drawing Finished");
 	}
 	
 	@Override
