@@ -19,7 +19,7 @@ public class FacedetectActivity extends Activity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);        
         /* フルスクリーンモードにする */
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         /* タイトルを消す */
         requestWindowFeature(Window.FEATURE_NO_TITLE);
 
