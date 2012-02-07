@@ -33,7 +33,7 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 	private int mRotate;
 
 	/* FaceDetectorの定数 */
-	private final int MAXDETECTOR = 10;
+	private final int MAXDETECTOR = 1;
 	private final int MAXFACES = 3;
 	/* 顔認識のリソース配列 */
 	private int DetectorNo = 0;
