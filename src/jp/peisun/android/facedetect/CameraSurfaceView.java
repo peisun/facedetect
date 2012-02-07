@@ -33,7 +33,7 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 	private int mRotate;
 
 	/* FaceDetectorの定数 */
-	private final int MAXDETECTOR = 1;
+	private final int MAXDETECTOR = 10;
 	private final int MAXFACES = 3;
 	/* 顔認識のリソース配列 */
 	private int DetectorNo = 0;
@@ -254,7 +254,7 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 				
 			final DetectResult detectresult = detectResult[DetectorNo];
 			detectresult.setRotate(mRotate);
-			dthread = new faceDetectThread(facedetector, bitmap, detectresult);
+			dthread = new faceDetectThread(DetectorNo, facedetector, bitmap, detectresult);
 			detectThread[DetectorNo++] = dthread;
 			dthread.start();
 			
@@ -267,11 +267,13 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 
 	class faceDetectThread extends Thread implements Runnable {
 		private final String TAG = "Facedetect:";
+		private int mId;
 		private FaceDetector mFacedetector;
 		private Bitmap mBitmap;
 		private DetectResult mResult;
 		
-		public faceDetectThread(FaceDetector facedetector, Bitmap bitmap, DetectResult result) {
+		public faceDetectThread(int id, FaceDetector facedetector, Bitmap bitmap, DetectResult result) {
+			mId = id;
 			mFacedetector = facedetector;
 			mBitmap = bitmap;
 			mResult = result;
@@ -280,7 +282,7 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 		@Override
 		public void run() {
 			if (mFacedetectEnable) {
-				Log.i(TAG, "Start FaceDetect");
+				Log.i(TAG, "Start FaceDetect:" + mId);
 				Matrix matrix = new Matrix();
 				matrix.setRotate(mResult.getRotate());
 				Bitmap bitmap = Bitmap.createBitmap(mBitmap, 0, 0, mBitmap.getWidth(), mBitmap.getHeight(), matrix, true);
@@ -289,8 +291,7 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 				FaceDetector.Face [] faces = mResult.getFaces();
 				int faceCount = mFacedetector.findFaces(bitmap, faces);
 				bitmap.recycle();
-				Log.i(TAG, "Finished FaceDetect");
-				Log.d(TAG, "FaceCount:" + faceCount);
+				Log.i(TAG, "Finished FaceDetect:" + mId + " :FaceCount:" + faceCount);
 				if (faceCount > 0) {
 					for (int i = faceCount; i < MAXFACES; i++) {
 						faces[i] = null;
