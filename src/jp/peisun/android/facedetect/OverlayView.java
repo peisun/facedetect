@@ -1,252 +1,228 @@
 package jp.peisun.android.facedetect;
 
+import java.util.Timer;
+import java.util.TimerTask;
+
 import android.content.Context;
-import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.PixelFormat;
 import android.graphics.PointF;
+import android.graphics.PorterDuff;
 import android.graphics.Rect;
 import android.graphics.Paint;
 import android.graphics.Paint.Style;
 import android.graphics.RectF;
-import android.graphics.PorterDuff;
 import android.media.FaceDetector;
-import android.media.FaceDetector.Face;
-import android.os.Handler;
-import android.os.Message;
 import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
-import android.view.View;
 
-public class OverlayView extends SurfaceView implements SurfaceHolder.Callback,Runnable {
-	private final String TAG = "OverlayView";
+public class OverlayView extends SurfaceView implements SurfaceHolder.Callback {
+	private final String TAG = "OverlayView:";
 
-	private Context mContext = null;
 	private SurfaceHolder mHolder = null;
 	
-	private Bitmap c00 = null;
-	private Rect c00_src = null;
-	private Paint mPaint = null;
-	private int mPreviewWidth = 0;
-	private int mPreviewHeight = 0;
-	final int MAXFACES = 3;
-	int findFace = 0;
+	private Bitmap face_bitmap = null;
+	private Bitmap circle_bitmap = null;
+	private Rect face_src = null;
+	private Rect circle_src = null;
+	private Paint mPaintRed = null;
+	private Paint mPaintBlack = null;
 	
-	RectF rect = new RectF();  /* マークの表示先座標 */
-	//private FaceDetector.Face[] faces = new FaceDetector.Face[MAXFACES];
-	private FaceDetector mFaceDetector = null;
-	private Bitmap bmp;
-	private boolean mOrient = false;
+	private int mWidth = 0;
+	private int mHeight = 0;
+	private int mRotateIndex = 0;
+	private final int DIVIDE = 36;
+	private Bitmap[] mRotatedBitmap = new Bitmap[DIVIDE];
 	
-	private volatile long findFaceTime = 500;
-	protected final Object lock = new Object();
+	private Timer mTimer = new Timer(true);
+
 	public OverlayView(Context context) {
 		super(context);
-		// TODO 自動生成されたコンストラクター・スタブ
-		mContext = context;
 		mHolder = getHolder();
 		mHolder.addCallback(this);
 		setDrawingCacheEnabled(true);            
 		// リソースから「笑い男」のビットマップを作る
-		c00 = BitmapFactory.decodeResource(this.getResources(), R.drawable.c00);
+		face_bitmap = BitmapFactory.decodeResource(this.getResources(), R.drawable.face);
+		circle_bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.circle);
 		// 
-        c00_src = new Rect(); 
-        c00_src.left = 0 ;
-        c00_src.top = 0 ;
-        c00_src.right = c00.getWidth() ;
-        c00_src.bottom = c00.getHeight() ;
+        face_src = new Rect(); 
+        face_src.left = 0 ;
+        face_src.top = 0 ;
+        face_src.right = face_bitmap.getWidth() ;
+        face_src.bottom = face_bitmap.getHeight() ;
+
+        circle_src = new Rect();
+        circle_src.left = 0;
+        circle_src.top = 0;
+        circle_src.right = circle_bitmap.getWidth();
+        circle_src.bottom = circle_bitmap.getHeight();
         
-        mPaint = new Paint();
-        mPaint.setColor(Color.argb(255, 255, 0, 0)); 
-        mPaint.setStyle(Style.STROKE);
-        setFocusable(true);
+        mPaintRed = new Paint();
+        mPaintRed.setColor(Color.RED);
+        mPaintRed.setStyle(Style.STROKE);
+        mPaintRed.setStrokeWidth(1.5f);
+
+        mPaintBlack = new Paint();
+        mPaintBlack.setColor(Color.BLACK);
+        mPaintBlack.setStyle(Style.FILL);
         
-        
+        setFocusable(true);        
 	}
-	@Override
-	public void surfaceChanged(SurfaceHolder holder, int format, int width,
-			int height) {
-		// TODO 自動生成されたメソッド・スタブ
-		if (mHolder.getSurface() == null){
-			// preview surface does not exist
-			return;
-		}
-	}
-	@Override
-	public void surfaceCreated(SurfaceHolder holder) {
-		// TODO 自動生成されたメソッド・スタブ
-		//mHolder = holder;
-		mHolder.setFormat(PixelFormat.TRANSLUCENT);
-		//mHolder.addCallback(this);
-	}
-	@Override
-	public void surfaceDestroyed(SurfaceHolder holder) {
-		// TODO 自動生成されたメソッド・スタブ
-		
+
+	public static final int MODE_FACE = 0;
+	public static final int MODE_BAR = 1;
+	public static final int MODE_RECT = 2;
+	
+	private int mFaceMode = MODE_RECT;
+	
+	public void setMode(int mode) {
+		mFaceMode = mode;
 	}
 	
-
-	protected int getPortrait() {
-
-		boolean portrait = (getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT);
-		if (portrait) {
-			return 90;
-		}
-		else{
-			return 0;
-		}
+	private int mResultWidth;
+	private int mResultHeight;
+	private int mResultRotate;
+	private FaceDetector.Face[] mResultFaces;
+	
+	public void setDetectResult(FaceDetector.Face[] faces, DetectResult result) {
+		mResultFaces = faces.clone();
+		mResultWidth = result.getWidth();
+		mResultHeight = result.getHeight();
+		mResultRotate = result.getRotate();
 	}
-	public void doDraw(FaceDetector.Face[] faces) {
-		// TODO 自動生成されたメソッド・スタブ
-		
+
+	private void faceDraw() {
+		if (mResultFaces ==null) return;// 検出結果が無ければ何もしない
+		Log.i(TAG, "Drawing Faces");
+		Log.d(TAG, "detectWidth:" + mResultWidth + "/detectHeight:" + mResultHeight);
 		Canvas canvas = mHolder.lockCanvas();
 		if(canvas != null){
-		//canvas.drawColor(Color.TRANSPARENT);
-		//
-		canvas.drawColor(0,PorterDuff.Mode.CLEAR ); 
-		//canvas.rotate(90);
-		//canvas.drawBitmap(c00, 0, 0, null);
-		
-		// 縮小したBitmapの表示
-//		synchronized(bmp){
-//		canvas.drawBitmap(bmp, 0, 0, mPaint);
-//		}
-		for (int i =0 ; i<faces.length && faces[i] != null ;i++) { 
-			//Face face = faces[i];
-			PointF midPoint = new PointF(0, 0);
-			faces[i].getMidPoint(midPoint); 
-			float eyesDistance = faces[i].eyesDistance();
+			RectF face_dst = new RectF();  /* 顔の表示先領域 */
 
-
-			/* 縦横それぞれ1/2の画像で認識させているので、大きさを2倍にしてあげる */
-			rect.left   = (midPoint.x - (eyesDistance*2))*2 ;
-			rect.top    = (midPoint.y - (eyesDistance*2))*2 ;
-			rect.right  = (midPoint.x + (eyesDistance*2))*2 ;
-			rect.bottom = (midPoint.y + (eyesDistance*2))*2 ;
-
-
-			canvas.drawBitmap(c00, c00_src, rect, mPaint);
+			canvas.drawColor(0, PorterDuff.Mode.CLEAR); /* 透明色の塗り潰し */
+			canvas.rotate(mResultRotate); /* 本体の向きに合わせてCanvasを回転 */
 			
-		}
-		
-		mHolder.unlockCanvasAndPost(canvas);
-		}
-		
-	}
-	private Handler mHandler = new Handler(){
-		public void handleMessage(Message msg) {
-            //メッセージの表示
-			FaceDetector.Face[] faces = (FaceDetector.Face[]) msg.obj;
-            doDraw(faces);
-            
-        };
-	};
+			/* 検出座標とCanvas座標の変換用倍率設定 */
+			float widthX = (float)mWidth / (float)mResultWidth;
+			float heightX = (float)mHeight / (float)mResultHeight;
+			/* 回転させたCanvasの原点位置を変更する（画面左上に原点を移動） */
+			/* Canvasの回転によって変換用倍率設定を変更 */
+			switch (mResultRotate) {
+			case -90:
+				canvas.translate(-mHeight, 0); 
+				widthX = (float)mHeight / (float)mResultWidth;
+				heightX = (float)mWidth / (float)mResultHeight;
+				break;
+			case 90:
+				canvas.translate(0, -mWidth);
+				widthX = (float)mHeight / (float)mResultWidth;
+				heightX = (float)mWidth / (float)mResultHeight;
+				break;
+			case 180:
+			case -180:
+				canvas.translate(-mWidth, -mHeight);
+				break;
+			default:
+				break;
+			}
 
-	public long getFindFaceTime(){
-		return findFaceTime;
-	}
-	public void surfaceChanged(int width,int height,boolean orient){
-		mPreviewWidth = width;
-		mPreviewHeight = height;
-		/* mFaceDetectorがnull、つまり最初の仕事 */
-		if(mFaceDetector == null){
-			mFaceDetector = new FaceDetector(width/2,height/2,MAXFACES);
-		}
-		/* 回転してたら作り直し */
-		if(orient != mOrient){
-			mOrient = orient;
-			mFaceDetector = null;
-			mFaceDetector = new FaceDetector(width/2,height/2,MAXFACES);
-			if(bmp != null){
-			synchronized(bmp){
-				bmp = null; /* Bitmapも作り直し */
-			}
-			}
-		}
-		
-	}
-	public void createBitmapDraw(Bitmap bmp){
-		if(bmp != null){
-		Canvas canvas = mHolder.lockCanvas();
-		//canvas.drawColor(Color.TRANSPARENT);
-		
-		//canvas.drawBitmap(c00, 0, 0, null);
-		canvas.drawBitmap(bmp, 0, 0, mPaint);
-		mHolder.unlockCanvasAndPost(canvas);
-		}
+			for (int i =0 ; i < mResultFaces.length && mResultFaces[i] != null ;i++) { 
+				PointF point = new PointF();
+				mResultFaces[i].getMidPoint(point);
+				float eyesDistance = mResultFaces[i].eyesDistance() * 1.8f;//顔中心から輪郭までの幅は目の間の距離の1.8倍程度
+				float centerX = mResultWidth - point.x;//何故か？左右が逆（認識結果のX軸原点と描画領域のX軸原点）
+				float centerY = point.y;
+				Log.d(TAG, "centerX:" + centerX + " centerY:" + centerY + " eyesDistance:" + eyesDistance);
+				Log.d(TAG, "widthX:" + widthX + " heightX" + heightX);
 
-	}
-	public void startFindFace(byte[] data,int width,int height,boolean orient){
-		int rgb[] = null;
-		long pre0,pre1 = 0;
-		if(data.length == 0) return ;
+				if (mFaceMode == MODE_FACE) {
+					int width = circle_bitmap.getWidth();
+					int height =circle_bitmap.getHeight();
+					Bitmap rotated_bitmap = mRotatedBitmap[mRotateIndex++];
+					if (mRotateIndex >= DIVIDE)mRotateIndex = 0;
+					
+					circle_src.left = rotated_bitmap.getWidth() / 2 - width / 2;
+					circle_src.top = rotated_bitmap.getHeight() / 2 - height / 2;
+					circle_src.right = rotated_bitmap.getWidth() / 2 + width / 2;
+					circle_src.bottom = rotated_bitmap.getHeight() / 2 + height /2;
+					
+					face_dst.left   = (centerX - eyesDistance) * widthX;
+					face_dst.top    = (centerY - eyesDistance) * heightX;
+					face_dst.right  = (centerX + eyesDistance) * widthX;
+					face_dst.bottom = (centerY + eyesDistance) * heightX;
 
-		if(bmp == null){
-			pre0 = System.currentTimeMillis();
-			if(orient == true){
-				rgb = DecodeYUV.decodeYUV420SP(data, width, height,DecodeYUV.SCALE_DOWN_ROTATE);
-				pre1 = System.currentTimeMillis();
-				bmp = Bitmap.createBitmap(rgb,  height/2,width/2,Bitmap.Config.RGB_565);
+					canvas.drawBitmap(rotated_bitmap, circle_src, face_dst, null);
+					canvas.drawBitmap(face_bitmap, face_src, face_dst, null);
+				} else if (mFaceMode == MODE_BAR) {
+					face_dst.left   = (centerX - eyesDistance) * widthX;
+					face_dst.top    = centerY * heightX - eyesDistance / 2.0f;
+					face_dst.right  = (centerX + eyesDistance) * widthX;
+					face_dst.bottom = centerY * heightX + eyesDistance / 2.0f;
+
+					canvas.drawRect(face_dst, mPaintBlack);				
+				} else if (mFaceMode == MODE_RECT) {
+					face_dst.left   = (centerX - eyesDistance) * widthX;
+					face_dst.top    = (centerY - eyesDistance) * heightX;
+					face_dst.right  = (centerX + eyesDistance) * widthX;
+					face_dst.bottom = (centerY + eyesDistance) * heightX;
+
+					canvas.drawRect(face_dst, mPaintRed);						
+				}
 			}
-			else {
-				rgb = DecodeYUV.decodeYUV420SP(data, width, height,DecodeYUV.SCALE_DOWN);
-				pre1 = System.currentTimeMillis();
-				bmp = Bitmap.createBitmap(rgb, width/2, height/2,Bitmap.Config.RGB_565);
-			}
-			long pre2 = System.currentTimeMillis();
-			Log.d(TAG,"time " + (pre1-pre0) + ":"+ (pre2-pre1));
-//			createBitmapDraw(bmp);
-			new Thread(this).start();
-			return ;
+			mHolder.unlockCanvasAndPost(canvas);
 		}
-		synchronized(bmp){
-		
-			long pre3 = System.currentTimeMillis();
-			
-			if(orient == true){
-				DecodeYUV.createBitmapYUVtoRGB565(data,width,height,bmp,DecodeYUV.SCALE_DOWN_ROTATE);
-			}
-			else {
-			//createBitmapYUVtoRGB565(data,bmp);
-				DecodeYUV.createBitmapYUVtoRGB565(data,width,height,bmp,DecodeYUV.SCALE_DOWN);
-			}
-			long pre4 = System.currentTimeMillis();
-			Log.d(TAG,"createBitmap time " + (pre4-pre3));
-//			createBitmapDraw(bmp);
-		}
-		new Thread(this).start();
-		return ;
+		Log.i(TAG, "Drawing Finished");
 	}
+
+	private void makeRotatedBitmap( ) {
+		Matrix matrix = new Matrix();
+		int width = circle_bitmap.getWidth();
+		int height =circle_bitmap.getHeight();
+		int degree = 0;
+		for (int i = 0; i < DIVIDE; i++) {
+			matrix.reset();
+			matrix.setRotate(-degree, width / 2, height / 2);
+			mRotatedBitmap[i] = Bitmap.createBitmap(circle_bitmap, 0, 0, width, height, matrix, false);
+			degree += 360 / DIVIDE;
+		}
+	}
+
 	@Override
-	public void run() {
-		// TODO 自動生成されたメソッド・スタブ
-		Log.d(TAG,"FindFaceDetector start");
-		if(bmp != null){
-			synchronized(bmp){
-				if(mFaceDetector == null) return;
-				FaceDetector.Face[] faces = new FaceDetector.Face[MAXFACES];
-				long pre5 = System.currentTimeMillis();
-				int findFace = mFaceDetector.findFaces(bmp,faces);
-				long pre6 = System.currentTimeMillis();
-				Log.d(TAG,"findFaces time " + (pre6-pre5));
-				findFaceTime = (findFaceTime + (pre6-pre5))/2;
-				
-					Message msg = Message.obtain();
-					msg.obj = faces;
-					mHandler.sendMessage(msg);
-				
-				Log.d(TAG,"FindFaceDetector end");
-				//		invalidate();
-			}
+	public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+		Log.i(TAG, "Changed");
+		Log.d(TAG, "SurfaceSize Width:" + width + "/Height:" + height);
+		mWidth = width;
+		mHeight = height;
+		makeRotatedBitmap();
+		if(mTimer == null) {
+			mTimer = new Timer(true);
 		}
-		return;
-		
+		TimerTask DrawPeriod = new TimerTask() {			
+			@Override
+			public void run() {
+				faceDraw();
+			}
+		};
+		mTimer.scheduleAtFixedRate(DrawPeriod, 1000, 200);
+	}
+
+	@Override
+	public void surfaceCreated(SurfaceHolder holder) {
+		Log.i(TAG, "Created");
+		holder.setFormat(PixelFormat.TRANSLUCENT);
 	}
 	
-	
-	
+	@Override
+	public void surfaceDestroyed(SurfaceHolder holder) {
+		if (mTimer != null) {
+			mTimer.cancel();
+			mTimer = null;
+		}
+		Log.i(TAG, "Destroyed");
+	}	
 }
